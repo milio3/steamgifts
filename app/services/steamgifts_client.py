@@ -17,13 +17,18 @@ class SteamGiftsClient:
 
     def __init__(self, phpsessid: str, base_url: str, user_agent: str, timeout: float):
         self.session = requests.Session()
-        self.session.cookies.set("PHPSESSID", phpsessid, domain="www.steamgifts.com")
+        cookie_limpia = str(phpsessid).strip().strip('"').strip("'")
+        self.phpsessid = cookie_limpia
+        self.session.cookies.set("PHPSESSID", cookie_limpia, domain="www.steamgifts.com")
+        self.session.cookies.set("PHPSESSID", cookie_limpia, domain=".steamgifts.com")
         self.session.headers.update({
             "User-Agent": user_agent,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
             "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br",
+            "Cookie": f"PHPSESSID={cookie_limpia}",
             "Connection": "keep-alive",
+            "DNT": "1",
+            "Upgrade-Insecure-Requests": "1",
         })
         self.base_url = base_url
         self.timeout = timeout
@@ -43,10 +48,22 @@ class SteamGiftsClient:
                     False,
                     f"Respuesta HTTP inesperada de SteamGifts (Código {response.status_code}).",
                 )
-            if "nav__points" not in response.text:
+
+            # Comprobar si Cloudflare interceptó la respuesta con HTTP 200
+            texto_lower = response.text.lower()
+            if "cf-browser-verification" in texto_lower or "just a moment" in texto_lower or "challenge-platform" in texto_lower:
                 return (
                     False,
-                    "La cookie PHPSESSID no tiene sesión activa (SteamGifts responde 200 pero muestra el botón de inicio de sesión). Comprueba que hayas copiado la cookie correcta.",
+                    "Cloudflare ha interceptado la conexión con una pantalla de comprobación de navegador ('Just a moment...').",
+                )
+
+            if "nav__points" not in response.text:
+                soup_title = re.search(r'<title>(.*?)</title>', response.text, re.IGNORECASE)
+                titulo = soup_title.group(1).strip() if soup_title else "Sin título"
+                logger.warning(f"Respuesta sin indicador de puntos. Título de página: '{titulo}', longitud HTML: {len(response.text)}")
+                return (
+                    False,
+                    f"La cookie PHPSESSID ({self.phpsessid[:6]}...) no tiene sesión activa (Página devuelta: '{titulo}'). Verifica que la cookie sea la de tu sesión actual.",
                 )
             return True, "Sesión válida"
         except requests.exceptions.ConnectionError as e:
