@@ -1,3 +1,5 @@
+import os
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,6 +22,14 @@ class Settings(BaseSettings):
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/126.0.0.0 Safari/537.36"
     )
+
+    @field_validator("DATABASE_URL", mode="after")
+    @classmethod
+    def normalizar_database_url(cls, v: str) -> str:
+        """Si la ruta de SQLite es de contenedor (/app/data) pero estamos en local, adaptar a data/database.db."""
+        if "/app/data" in v and not os.path.exists("/app"):
+            return "sqlite:///data/database.db"
+        return v
 
     model_config = SettingsConfigDict(
         env_file=".env",
