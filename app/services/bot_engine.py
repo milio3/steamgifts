@@ -13,6 +13,13 @@ from app.models.entry import Entry, RunLog
 from app.schemas.giveaway import EntryResult, RunSummary
 from app.services.steamgifts_client import SteamGiftsClient
 
+from app.core.categories import (
+    AVAILABLE_CATEGORIES,
+    DEFAULT_CATEGORY_ORDER,
+    load_categories_config,
+)
+from app.services.telegram_alert import notify_points_threshold_exceeded
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,34 +27,28 @@ class BotEngine:
     """Orquestador del bot: gestiona prioridades, puntos y registro de entradas."""
 
     # Orden de prioridad de categorías con sus URLs
-    CATEGORY_PRIORITY = {
-        "wishlist": "/giveaways/search?type=wishlist",
-        "dlc": "/giveaways/search?dlc=true",
-        "group": "/giveaways/search?type=group",
-        "multiple_copies": "/giveaways/search?copy_min=2",
-        "new": "/giveaways/search?type=new",
-    }
+    CATEGORY_PRIORITY = {k: v["url"] for k, v in AVAILABLE_CATEGORIES.items()}
 
     # Nombres legibles para los logs
-    CATEGORY_NAMES = {
-        "wishlist": "🌟 Wishlist",
-        "dlc": "📦 DLC",
-        "group": "👥 Group",
-        "multiple_copies": "📋 Multiple Copies",
-        "new": "🆕 New",
-    }
+    CATEGORY_NAMES = {k: v["label"] for k, v in AVAILABLE_CATEGORIES.items()}
 
     def __init__(self, client: SteamGiftsClient, db_session: Session):
         self.client = client
         self.db = db_session
+        self._stop_logged = False
 
     def run(self, categories: Optional[List[str]] = None) -> RunSummary:
         """Ejecuta el bot completo: escanea categorías y entra en giveaways."""
-        logger.info("=" * 60)
-        logger.info("🚀 INICIANDO EJECUCIÓN DEL BOT")
-        logger.info("=" * 60)
+        self._stop_logged = False
+        logger.info("═" * 60)
+        logger.info("[INICIO] INICIANDO EJECUCIÓN DEL BOT")
+        logger.info("═" * 60)
 
-        cats_to_run = categories if categories else list(self.CATEGORY_PRIORITY.keys())
+        if categories:
+            cats_to_run = categories
+        else:
+            order, enabled = load_categories_config()
+            cats_to_run = [c for c in order if c in enabled and c in self.CATEGORY_PRIORITY]
 
         # Crear registro de ejecución en BD
         run_log = RunLog(status="running", total_points_spent=0)
@@ -68,10 +69,12 @@ class BotEngine:
             puntos_actuales = acc_info.points
             self.db.commit()
 
-            logger.info(f"👤 Usuario: {acc_info.username}")
-            logger.info(f"💰 Puntos iniciales: {puntos_actuales}")
-            logger.info(f"📊 Nivel: {acc_info.level}")
-            logger.info(f"📂 Categorías a procesar: {', '.join(cats_to_run)}")
+            logger.info(f"Usuario: {acc_info.username} │ Puntos: {puntos_actuales} P │ Nivel: {acc_info.level}")
+            logger.info(f"Categorías: {', '.join(cats_to_run)}")
+
+            # Comprobar alerta de Telegram si se alcanza el límite de puntos (ej. 400)
+            if puntos_actuales >= settings.TELEGRAM_POINTS_THRESHOLD:
+                notify_points_threshold_exceeded(puntos_actuales, acc_info.username)
 
             entradas_realizadas = 0
 
@@ -84,9 +87,7 @@ class BotEngine:
                     break
 
                 nombre_cat = self.CATEGORY_NAMES.get(cat, cat)
-                logger.info(f"\n{'─' * 40}")
-                logger.info(f"📂 Procesando categoría: {nombre_cat}")
-                logger.info(f"{'─' * 40}")
+                logger.info(f"─── Categoría: {nombre_cat} ─────────────────────────────")
 
                 url_cat = self.CATEGORY_PRIORITY[cat]
                 entradas_cat = self._process_category(
@@ -99,12 +100,16 @@ class BotEngine:
                 if summary_entries and summary_entries[-1].points_remaining is not None:
                     puntos_actuales = summary_entries[-1].points_remaining
 
-                logger.info(f"  → {entradas_cat} entradas en {nombre_cat}")
+                logger.info(f"  → {entradas_cat} entrada(s) procesadas en {nombre_cat}")
 
-                # Delay entre categorías si no es la última
+                # Si ya no quedan puntos o se alcanzó el límite, no esperar ni procesar más categorías
+                if self._should_stop(entradas_realizadas, puntos_actuales):
+                    break
+
+                # Delay entre categorías si no es la última y se hicieron entradas
                 if cat != cats_to_run[-1] and entradas_cat > 0:
                     delay = settings.CATEGORY_DELAY_SECONDS
-                    logger.info(f"⏳ Esperando {delay}s antes de la siguiente categoría...")
+                    logger.info(f"Esperando {delay}s antes de la siguiente categoría...")
                     time.sleep(delay)
 
             # Finalizar ejecución
@@ -114,12 +119,12 @@ class BotEngine:
             run_log.finished_at = datetime.now(timezone.utc)
             self.db.commit()
 
-            logger.info(f"\n{'=' * 60}")
-            logger.info(f"✅ EJECUCIÓN COMPLETADA")
-            logger.info(f"   Entradas realizadas: {entradas_realizadas}")
-            logger.info(f"   Puntos gastados: {run_log.total_points_spent}")
-            logger.info(f"   Puntos restantes: {puntos_actuales}")
-            logger.info(f"{'=' * 60}")
+            logger.info("═" * 60)
+            logger.info(
+                f"[OK] Ronda terminada: {entradas_realizadas} entradas realizadas "
+                f"({run_log.total_points_spent} P gastados | {puntos_actuales} P restantes)"
+            )
+            logger.info("═" * 60)
 
             return RunSummary(
                 run_id=run_log.id,
@@ -134,7 +139,7 @@ class BotEngine:
             )
 
         except Exception as e:
-            logger.error(f"💥 Error en la ejecución del bot: {e}")
+            logger.error(f"[ERROR] Error en la ejecución del bot: {e}")
             run_log.status = "error"
             run_log.error_message = str(e)[:500]
             run_log.finished_at = datetime.now(timezone.utc)
@@ -167,18 +172,18 @@ class BotEngine:
             # Verificar que tenemos puntos suficientes
             if puntos_actuales < gw.points_cost:
                 logger.debug(
-                    f"  ⏭️ {gw.game_name} ({gw.points_cost}P) - Puntos insuficientes ({puntos_actuales}P)"
+                    f"  [Saltado] {gw.game_name} ({gw.points_cost}P) - Puntos insuficientes ({puntos_actuales}P)"
                 )
                 continue
 
             # Delay aleatorio entre peticiones para parecer humano
             delay = random.uniform(settings.MIN_DELAY_SECONDS, settings.MAX_DELAY_SECONDS)
-            logger.debug(f"  ⏳ Esperando {delay:.1f}s...")
+            logger.debug(f"  Esperando {delay:.1f}s...")
             time.sleep(delay)
 
             # Intentar entrar en el giveaway
             logger.info(
-                f"  🎮 Entrando en: {gw.game_name} ({gw.points_cost}P) "
+                f"[SORTEO] Entrando en: {gw.game_name} ({gw.points_cost}P) "
                 f"[{gw.entries_count} participantes, {gw.copies} copia(s)]"
             )
             resultado = self.client.enter_giveaway(
@@ -222,9 +227,13 @@ class BotEngine:
     def _should_stop(self, current_entries: int, points: int) -> bool:
         """Determina si el bot debe detenerse."""
         if current_entries >= settings.MAX_ENTRIES_PER_RUN:
-            logger.info(f"🛑 Límite de entradas alcanzado ({settings.MAX_ENTRIES_PER_RUN})")
+            if not self._stop_logged:
+                logger.info(f"[LIMITE] Límite de entradas alcanzado ({settings.MAX_ENTRIES_PER_RUN})")
+                self._stop_logged = True
             return True
         if points <= 0:
-            logger.info("🛑 Sin puntos disponibles")
+            if not self._stop_logged:
+                logger.info("[FIN] Puntos agotados (0 P disponibles)")
+                self._stop_logged = True
             return True
         return False

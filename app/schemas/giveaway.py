@@ -40,3 +40,7 @@ class AccountInfo(BaseModel):
 
 class RunRequest(BaseModel):
     categories: Optional[List[str]] = None
+
+class CategoriesConfigRequest(BaseModel):
+    order: List[str]
+    enabled: Optional[List[str]] = None

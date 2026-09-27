@@ -8,7 +8,7 @@
 </div>
 
 <!-- Tarjetas de Métricas -->
-<div id="stats-container" hx-get="/partials/stats" hx-trigger="load" hx-swap="innerHTML">
+<div id="stats-container" hx-get="/partials/stats" hx-trigger="load, every 10s" hx-swap="innerHTML">
     <div class="d-flex justify-content-center my-5">
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Cargando métricas...</span>
@@ -16,64 +16,116 @@
     </div>
 </div>
 
-<div class="row mt-4">
-    <!-- Controles de Ejecución -->
-    <div class="col-lg-4 mb-4">
-        <div class="card h-100 border-secondary bg-dark-steam-light shadow-sm">
+<div class="row mt-4 align-items-stretch">
+    <!-- Panel de Lanzamiento de Ejecución -->
+    <div class="col-lg-4 mb-4 d-flex flex-column">
+        <div class="card w-100 h-100 border-secondary bg-dark-steam-light shadow-sm d-flex flex-column justify-content-between">
             <div class="card-header border-secondary bg-transparent py-3">
-                <h5 class="card-title m-0"><i class="bi bi-rocket-takeoff text-success"></i> Ejecución Manual</h5>
+                <h5 class="card-title m-0 d-flex align-items-center gap-2">
+                    <svg class="tailwind-svg-icon text-success" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                    </svg>
+                    <span>Lanzador de Bot</span>
+                </h5>
             </div>
-            <div class="card-body">
-                <form id="run-bot-form" hx-post="/partials/run-bot" hx-target="#run-feedback" hx-swap="innerHTML">
-                    <p class="text-muted small mb-3">Selecciona las categorías en orden de prioridad:</p>
+            <div class="card-body d-flex flex-column justify-content-between p-4">
+                <div>
+                    <p class="text-light-emphasis small mb-3">
+                        Inicia una ronda de participación automática en segundo plano. El bot escaneará los sorteos disponibles respetando los límites y el orden establecido en la configuración.
+                    </p>
                     
-                    <div class="d-flex flex-column gap-2 mb-4">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="cat-wishlist" name="categories" value="wishlist" checked>
-                            <label class="form-check-label badge-wishlist" for="cat-wishlist">🌟 Wishlist (Prioridad 1)</label>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="cat-dlc" name="categories" value="dlc" checked>
-                            <label class="form-check-label badge-dlc" for="cat-dlc">📦 DLCs (Prioridad 2)</label>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="cat-group" name="categories" value="group" checked>
-                            <label class="form-check-label badge-group" for="cat-group">👥 Grupos (Prioridad 3)</label>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="cat-multiple" name="categories" value="multiple_copies" checked>
-                            <label class="form-check-label badge-multiple" for="cat-multiple">📋 Múltiples Copias (Prioridad 4)</label>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="cat-new" name="categories" value="new" checked>
-                            <label class="form-check-label badge-new" for="cat-new">🆕 Nuevos (Prioridad 5)</label>
+                    <!-- Bloque de Puntos Disponibles en Tiempo Real -->
+                    <div id="account-points-container" class="mb-4" hx-get="/partials/account-points" hx-trigger="load" hx-swap="innerHTML">
+                        <div class="p-3 rounded bg-dark border border-secondary d-flex align-items-center justify-content-between">
+                            <span class="text-muted small"><span class="spinner-border spinner-border-sm me-2"></span>Consultando puntos disponibles...</span>
+                            <button class="btn btn-sm btn-outline-info py-0 px-2 disabled">Consultar</button>
                         </div>
                     </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg btn-run-gradient shadow fw-bold" id="btn-run-bot">
-                            <i class="bi bi-play-fill fs-5"></i> Ejecutar Bot
-                        </button>
-                    </div>
+                </div>
 
-                    <div id="run-feedback" class="mt-3"></div>
-                </form>
+                <div>
+                    <form id="run-bot-form" hx-post="/partials/run-bot" hx-target="#run-feedback" hx-swap="innerHTML">
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg btn-run-gradient shadow fw-bold py-3 d-flex align-items-center justify-content-center gap-2" id="btn-run-bot">
+                                <svg class="tailwind-svg-icon" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                                    <path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" />
+                                </svg>
+                                <span>Iniciar Ejecución</span>
+                            </button>
+                        </div>
+                        <div id="run-feedback" class="mt-3"></div>
+                    </form>
+
+                    <div class="mt-3 pt-3 border-top border-secondary text-center">
+                        <a href="/config" class="text-info text-decoration-none small d-inline-flex align-items-center gap-1">
+                            <i class="bi bi-gear"></i> Modificar parámetros u orden de categorías
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     
-    <!-- Últimas entradas -->
-    <div class="col-lg-8 mb-4">
-        <div class="card h-100 border-secondary bg-dark-steam-light shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center border-secondary bg-transparent py-3">
-                <h5 class="card-title m-0"><i class="bi bi-gift text-warning"></i> Últimas 10 Entradas</h5>
-                <a href="/entries" class="btn btn-sm btn-outline-light">Ver historial completo</a>
+    <!-- Consola de Ejecución en Vivo -->
+    <div class="col-lg-8 mb-4 d-flex flex-column">
+        <div class="terminal-window w-100 h-100 d-flex flex-column shadow">
+            <div class="terminal-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="terminal-dot terminal-dot-red"></span>
+                    <span class="terminal-dot terminal-dot-yellow"></span>
+                    <span class="terminal-dot terminal-dot-green"></span>
+                    <span class="text-muted small ms-2 font-monospace">consola@steamgifts-bot:~$</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" 
+                            class="btn btn-sm btn-outline-secondary py-0 px-2 text-muted" 
+                            hx-post="/partials/clear-console" 
+                            hx-target="#console-logs" 
+                            hx-swap="innerHTML"
+                            title="Limpiar registros de consola">
+                        <i class="bi bi-trash small"></i>
+                    </button>
+                    <span id="console-live-badge" class="badge bg-dark border border-secondary text-info small">
+                        <i class="bi bi-terminal me-1"></i> Salida en vivo
+                    </span>
+                </div>
             </div>
-            <div class="card-body p-0">
-                <div id="latest-entries-container" hx-get="/partials/latest-entries" hx-trigger="load" hx-swap="innerHTML">
-                    <div class="d-flex justify-content-center my-5">
+            <div id="console-body" class="terminal-body flex-grow-1">
+                <div id="console-logs" hx-get="/partials/console-logs" hx-trigger="load, every 1.5s" hx-swap="innerHTML">
+                    <div class="console-line text-muted fst-italic">consola@steamgifts-bot:~$ Cargando registros...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sesiones de Ejecución (Todas las entradas incluidas por cada sesión) -->
+<div class="row mt-2">
+    <div class="col-12">
+        <div class="card border-secondary bg-dark-steam-light shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center border-secondary bg-transparent py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <svg class="tailwind-svg-icon text-warning" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                    <h5 class="card-title m-0">Sesiones de Ejecución</h5>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-muted small d-none d-md-inline">Haz clic en cualquier sesión para desplegar u ocultar sus sorteos</span>
+                    <button class="btn btn-sm btn-outline-secondary py-1 px-2 text-light" 
+                            hx-get="/partials/execution-sessions" 
+                            hx-target="#sessions-container" 
+                            hx-swap="innerHTML"
+                            title="Actualizar sesiones">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-3">
+                <div id="sessions-container" hx-get="/partials/execution-sessions" hx-trigger="load, refreshSessions from:body" hx-swap="innerHTML">
+                    <div class="d-flex justify-content-center my-4">
                         <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Cargando entradas...</span>
+                            <span class="visually-hidden">Cargando sesiones...</span>
                         </div>
                     </div>
                 </div>

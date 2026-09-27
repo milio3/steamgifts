@@ -9,12 +9,18 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 import app.main as main_app
 from app.api.v1.bot import _ejecutar_bot_en_segundo_plano
-from app.core.config import settings
+from app.core.categories import (
+    AVAILABLE_CATEGORIES,
+    load_categories_config,
+    save_categories_config,
+)
+from app.core.config import settings, update_settings_and_env
 from app.core.database import get_db
+from app.core.logging_buffer import console_handler
 from app.models.entry import Entry, RunLog
 from app.services.steamgifts_client import SteamGiftsClient
 
@@ -36,9 +42,30 @@ async def raiz():
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    """Vista principal: panel de control con métricas y controles."""
+    """Vista principal: panel de control con métricas, consola en vivo y sesiones."""
+    order, _ = load_categories_config()
+    configured_categories = []
+    for idx, cat_id in enumerate(order, start=1):
+        info = AVAILABLE_CATEGORIES.get(cat_id, {})
+        configured_categories.append({
+            "id": cat_id,
+            "name": info.get("name", cat_id),
+            "label": f"{idx}. {info.get('label', cat_id)}",
+            "simple_label": f"{idx}. {info.get('name', cat_id)}",
+            "badge_class": info.get("badge_class", f"badge-{cat_id}"),
+            "priority": idx,
+        })
+
+    is_running = getattr(main_app, "is_bot_running", False)
+
     return templates.TemplateResponse(
-        request=request, name="dashboard.html", context={"title": "Dashboard"}
+        request=request,
+        name="dashboard.html",
+        context={
+            "title": "Dashboard",
+            "categories": configured_categories,
+            "is_running": is_running,
+        },
     )
 
 
@@ -70,7 +97,21 @@ async def detalle_ejecucion(request: Request, run_id: int):
 
 @router.get("/config", response_class=HTMLResponse)
 async def configuracion(request: Request):
-    """Vista de configuración (solo lectura y verificación de credencial)."""
+    """Vista de configuración editable directamente desde la app."""
+    order, _ = load_categories_config()
+    categories_list = []
+    for idx, cat_id in enumerate(order, start=1):
+        info = AVAILABLE_CATEGORIES.get(cat_id, {})
+        categories_list.append({
+            "id": cat_id,
+            "name": info.get("name", cat_id),
+            "label": f"{idx}. {info.get('label', cat_id)}",
+            "raw_label": info.get("label", cat_id),
+            "badge_class": info.get("badge_class", f"badge-{cat_id}"),
+            "svg_icon": info.get("svg_icon", ""),
+            "priority": idx,
+        })
+
     cookie = settings.STEAMGIFTS_PHPSESSID
     cookie_oculta = ""
     if cookie:
@@ -84,6 +125,7 @@ async def configuracion(request: Request):
             "title": "Configuración",
             "settings": settings,
             "cookie_oculta": cookie_oculta,
+            "categories": categories_list,
         },
     )
 
@@ -120,14 +162,93 @@ async def partial_stats(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/partials/latest-entries", response_class=HTMLResponse)
-async def partial_ultimas_entradas(request: Request, db: Session = Depends(get_db)):
-    """Fragmento HTML con las últimas 10 entradas para el panel principal."""
-    entries = db.query(Entry).order_by(Entry.timestamp.desc()).limit(10).all()
+@router.get("/partials/execution-sessions", response_class=HTMLResponse)
+async def partial_execution_sessions(request: Request, db: Session = Depends(get_db)):
+    """Fragmento HTML con las sesiones de ejecución y todas sus entradas."""
+    runs = (
+        db.query(RunLog)
+        .options(joinedload(RunLog.entries))
+        .order_by(RunLog.started_at.desc())
+        .limit(20)
+        .all()
+    )
     return templates.TemplateResponse(
         request=request,
-        name="components/entries_table.html",
-        context={"entries": entries},
+        name="components/execution_sessions.html",
+        context={"runs": runs},
+    )
+
+
+@router.get("/partials/console-logs", response_class=HTMLResponse)
+async def partial_console_logs():
+    """Fragmento HTML con los logs de la consola en tiempo real."""
+    html_logs = console_handler.get_formatted_html()
+    is_running = getattr(main_app, "is_bot_running", False)
+    if is_running:
+        html_logs += '\n<div class="console-line text-warning"><span class="spinner-border spinner-border-sm me-1"></span> Ejecutando bot en segundo plano... <span class="blink">▌</span></div>'
+    return HTMLResponse(html_logs)
+
+
+@router.post("/partials/clear-console", response_class=HTMLResponse)
+async def partial_clear_console():
+    """Limpia el buffer de la consola web."""
+    console_handler.clear()
+    return HTMLResponse('<div class="console-line text-muted fst-italic">consola@steamgifts-bot:~$ Consola limpiada.</div>')
+
+
+@router.post("/partials/save-config", response_class=HTMLResponse)
+async def partial_save_config(request: Request):
+    """Guarda la configuración general y el orden de categorías desde la app."""
+    form_data = await request.form()
+
+    phpsessid = str(form_data.get("phpsessid", "")).strip()
+    max_entries = str(form_data.get("max_entries_per_run", "25")).strip()
+    timeout = str(form_data.get("http_timeout_seconds", "15.0")).strip()
+    min_delay = str(form_data.get("min_delay_seconds", "3.0")).strip()
+    max_delay = str(form_data.get("max_delay_seconds", "8.0")).strip()
+    category_delay = str(form_data.get("category_delay_seconds", "5.0")).strip()
+
+    updates = {}
+    if phpsessid:
+        updates["STEAMGIFTS_PHPSESSID"] = phpsessid
+    if max_entries.isdigit():
+        updates["MAX_ENTRIES_PER_RUN"] = int(max_entries)
+    try:
+        updates["HTTP_TIMEOUT_SECONDS"] = float(timeout)
+        updates["MIN_DELAY_SECONDS"] = float(min_delay)
+        updates["MAX_DELAY_SECONDS"] = float(max_delay)
+        updates["CATEGORY_DELAY_SECONDS"] = float(category_delay)
+    except ValueError:
+        pass
+
+    # Parámetros de Telegram
+    telegram_enabled = "telegram_alerts_enabled" in form_data
+    updates["TELEGRAM_ALERTS_ENABLED"] = telegram_enabled
+
+    telegram_token = str(form_data.get("telegram_bot_token", "")).strip()
+    if telegram_token:
+        updates["TELEGRAM_BOT_TOKEN"] = telegram_token
+
+    telegram_chat = str(form_data.get("telegram_chat_id", "")).strip()
+    if telegram_chat:
+        updates["TELEGRAM_CHAT_ID"] = telegram_chat
+
+    telegram_threshold = str(form_data.get("telegram_points_threshold", "400")).strip()
+    if telegram_threshold.isdigit():
+        updates["TELEGRAM_POINTS_THRESHOLD"] = int(telegram_threshold)
+
+    update_settings_and_env(updates)
+
+    # Guardar orden de categorías
+    categories_order = form_data.getlist("category_order")
+    if categories_order:
+        save_categories_config(categories_order, categories_order)
+
+    return HTMLResponse(
+        "<div class='alert alert-success d-flex align-items-center py-2 mb-0 shadow-sm animate-fade'>"
+        "<i class='bi bi-check-circle-fill me-2 fs-5'></i>"
+        "<div><strong>¡Configuración guardada!</strong> Los parámetros, alertas de Telegram y el orden de categorías han sido actualizados con éxito.</div>"
+        "</div>"
     )
 
 
@@ -236,7 +357,7 @@ async def partial_ejecutar_bot_formulario(
     request: Request,
     background_tasks: BackgroundTasks,
 ):
-    """Gestiona el formulario web para lanzar la ejecución del bot en segundo plano."""
+    """Lanza la ejecución del bot en segundo plano con las categorías configuradas."""
     if getattr(main_app, "is_bot_running", False):
         return HTMLResponse(
             "<div class='alert alert-warning py-2 mb-0 small'><i class='bi bi-exclamation-triangle'></i> El bot ya está en ejecución.</div>"
@@ -244,17 +365,31 @@ async def partial_ejecutar_bot_formulario(
 
     if not settings.STEAMGIFTS_PHPSESSID:
         return HTMLResponse(
-            "<div class='alert alert-danger py-2 mb-0 small'><i class='bi bi-x-circle'></i> Cookie PHPSESSID no configurada en .env</div>"
+            "<div class='alert alert-danger py-2 mb-0 small'><i class='bi bi-x-circle'></i> Cookie PHPSESSID no configurada. Ve a <a href='/config' class='alert-link'>Configuración</a> para ingresarla.</div>"
         )
 
-    form_data = await request.form()
-    categories = form_data.getlist("categories")
-    if not categories:
-        categories = None
-
-    background_tasks.add_task(_ejecutar_bot_en_segundo_plano, categories)
+    order, _ = load_categories_config()
+    background_tasks.add_task(_ejecutar_bot_en_segundo_plano, order)
     return HTMLResponse(
-        "<div class='alert alert-success py-2 mb-0 small'><i class='bi bi-check-circle'></i> ¡Ejecución iniciada correctamente!</div>"
+        "<div class='alert alert-success py-2 mb-0 small animate-fade'>"
+        "<i class='bi bi-check-circle me-1'></i> ¡Ejecución iniciada! Sigue el progreso en tiempo real en la consola."
+        "</div>"
+    )
+
+
+@router.post("/partials/save-category-order", response_class=HTMLResponse)
+async def partial_guardar_orden_categorias(request: Request):
+    """Guarda en tiempo real el orden de las categorías desde la configuración."""
+    form_data = await request.form()
+    categories_order = form_data.getlist("category_order")
+
+    if categories_order:
+        save_categories_config(categories_order, categories_order)
+        return HTMLResponse(
+            "<span class='text-success small animate-fade'><i class='bi bi-check2-circle'></i> Orden guardado correctamente</span>"
+        )
+    return HTMLResponse(
+        "<span class='text-warning small'>Sin cambios en el orden</span>"
     )
 
 
@@ -267,7 +402,7 @@ async def partial_verificar_sesion(request: Request):
             name="components/session_status.html",
             context={
                 "success": False,
-                "error": "La variable STEAMGIFTS_PHPSESSID está vacía en el fichero .env.",
+                "error": "La variable STEAMGIFTS_PHPSESSID está vacía. Configúrala en la pestaña de Configuración.",
             },
         )
 
@@ -299,4 +434,108 @@ async def partial_verificar_sesion(request: Request):
             request=request,
             name="components/session_status.html",
             context={"success": False, "error": str(e)},
+        )
+
+
+@router.get("/partials/account-points", response_class=HTMLResponse)
+async def partial_puntos_cuenta(request: Request):
+    """Obtiene los puntos actualmente disponibles desde SteamGifts con botón de recarga."""
+    if not settings.STEAMGIFTS_PHPSESSID:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/account_points.html",
+            context={
+                "configured": False,
+                "error": "Cookie PHPSESSID no configurada.",
+            },
+        )
+
+    try:
+        client = SteamGiftsClient(
+            phpsessid=settings.STEAMGIFTS_PHPSESSID,
+            base_url=settings.STEAMGIFTS_BASE_URL,
+            user_agent=settings.USER_AGENT,
+            timeout=settings.HTTP_TIMEOUT_SECONDS,
+        )
+        if not client.is_session_valid():
+            return templates.TemplateResponse(
+                request=request,
+                name="components/account_points.html",
+                context={
+                    "configured": True,
+                    "valid": False,
+                    "error": "Sesión inválida o expirada. Actualiza tu PHPSESSID.",
+                },
+            )
+
+        acc = client.get_account_info()
+
+        # Si alcanza o supera el umbral configurado (ej. 400), comprobar alerta Telegram
+        from app.services.telegram_alert import notify_points_threshold_exceeded
+        if acc.points >= settings.TELEGRAM_POINTS_THRESHOLD:
+            notify_points_threshold_exceeded(acc.points, acc.username)
+
+        return templates.TemplateResponse(
+            request=request,
+            name="components/account_points.html",
+            context={
+                "configured": True,
+                "valid": True,
+                "points": acc.points,
+                "username": acc.username,
+                "level": acc.level,
+                "threshold": settings.TELEGRAM_POINTS_THRESHOLD,
+                "limit_reached": acc.points >= settings.TELEGRAM_POINTS_THRESHOLD,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error consultando puntos de cuenta: {e}")
+        return templates.TemplateResponse(
+            request=request,
+            name="components/account_points.html",
+            context={
+                "configured": True,
+                "valid": False,
+                "error": f"Error al conectar con SteamGifts: {e}",
+            },
+        )
+
+
+@router.post("/partials/test-telegram", response_class=HTMLResponse)
+async def partial_probar_telegram():
+    """Envía un mensaje de prueba al bot de Telegram configurado."""
+    from app.services.telegram_alert import send_telegram_message
+
+    if not settings.TELEGRAM_ALERTS_ENABLED:
+        return HTMLResponse(
+            "<div class='alert alert-warning py-2 mb-0 small animate-fade'>"
+            "<i class='bi bi-exclamation-triangle me-1'></i> Las alertas de Telegram están desactivadas en la configuración."
+            "</div>"
+        )
+
+    if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_CHAT_ID:
+        return HTMLResponse(
+            "<div class='alert alert-danger py-2 mb-0 small animate-fade'>"
+            "<i class='bi bi-x-circle me-1'></i> Falta configurar el TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID."
+            "</div>"
+        )
+
+    msg = (
+        "🤖 <b>SteamGifts Bot — Prueba de Conexión</b>\n\n"
+        "¡Excelente! La integración de alertas de Telegram está funcionando correctamente.\n"
+        f"Recibirás avisos automáticos cuando tus puntos alcancen o superen los <b>{settings.TELEGRAM_POINTS_THRESHOLD} P</b>."
+    )
+
+    exito = send_telegram_message(msg)
+    if exito:
+        return HTMLResponse(
+            "<div class='alert alert-success py-2 mb-0 small animate-fade'>"
+            "<i class='bi bi-check-circle me-1'></i> <strong>¡Mensaje enviado!</strong> Revisa tu Telegram, la prueba ha sido exitosa."
+            "</div>"
+        )
+    else:
+        return HTMLResponse(
+            "<div class='alert alert-danger py-2 mb-0 small animate-fade'>"
+            "<i class='bi bi-x-circle me-1'></i> No se pudo enviar el mensaje a Telegram. Verifica el token y chat ID."
+            "</div>"
         )

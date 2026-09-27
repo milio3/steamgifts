@@ -7,9 +7,14 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 import app.main as main_app
+from app.core.categories import (
+    AVAILABLE_CATEGORIES,
+    load_categories_config,
+    save_categories_config,
+)
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.schemas.giveaway import AccountInfo, RunRequest
+from app.schemas.giveaway import AccountInfo, CategoriesConfigRequest, RunRequest
 from app.services.bot_engine import BotEngine
 from app.services.steamgifts_client import SteamGiftsClient
 
@@ -63,11 +68,14 @@ def ejecutar_bot(request: RunRequest, background_tasks: BackgroundTasks):
             "message": "Cookie PHPSESSID no configurada. Edita el fichero .env",
         }
 
+    order, enabled = load_categories_config()
+    default_cats = [c for c in order if c in enabled and c in BotEngine.CATEGORY_PRIORITY]
+
     background_tasks.add_task(_ejecutar_bot_en_segundo_plano, request.categories)
     return {
         "status": "started",
         "message": "Ejecución iniciada en segundo plano",
-        "categories": request.categories or list(BotEngine.CATEGORY_PRIORITY.keys()),
+        "categories": request.categories or default_cats,
     }
 
 
@@ -83,3 +91,29 @@ def informacion_cuenta():
     """Obtiene la información actual de la cuenta en SteamGifts."""
     client = _crear_cliente()
     return client.get_account_info()
+
+
+@router.get("/categories")
+def obtener_categorias():
+    """Devuelve la lista de categorías con su orden actual y estado de activación."""
+    order, enabled = load_categories_config()
+    resultado = []
+    for idx, cat_id in enumerate(order, start=1):
+        info = AVAILABLE_CATEGORIES.get(cat_id, {})
+        resultado.append({
+            "id": cat_id,
+            "name": info.get("name", cat_id),
+            "label": info.get("label", cat_id),
+            "priority": idx,
+            "enabled": cat_id in enabled,
+            "url": info.get("url", ""),
+        })
+    return {"categories": resultado}
+
+
+@router.post("/categories")
+def actualizar_categorias(payload: CategoriesConfigRequest):
+    """Actualiza el orden y activación de las categorías."""
+    enabled_list = payload.enabled if payload.enabled is not None else payload.order
+    ok = save_categories_config(payload.order, enabled_list)
+    return {"success": ok, "categories_order": payload.order, "enabled_categories": enabled_list}

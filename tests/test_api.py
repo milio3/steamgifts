@@ -87,3 +87,29 @@ def test_consulta_detalle_ejecucion(client, db_session):
     assert data["run"]["id"] == run.id
     assert data["run"]["status"] == "completed"
     assert data["run"]["total_entries"] == 2
+
+
+def test_obtener_y_actualizar_categorias_api(client):
+    """Verifica que la API permita consultar y actualizar el orden de categorías."""
+    response = client.get("/api/v1/bot/categories")
+    assert response.status_code == 200
+    data = response.json()
+    assert "categories" in data
+    assert len(data["categories"]) == 7
+
+    # Actualizar orden vía API
+    nuevo_orden = [
+        "wishlist",
+        "dlc",
+        "group",
+        "multiple_copies",
+        "recommended",
+        "new",
+        "all",
+    ]
+    post_resp = client.post(
+        "/api/v1/bot/categories",
+        json={"order": nuevo_orden, "enabled": nuevo_orden},
+    )
+    assert post_resp.status_code == 200
+    assert post_resp.json()["success"] is True

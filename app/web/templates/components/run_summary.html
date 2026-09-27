@@ -5,11 +5,11 @@
             <span class="text-muted small text-uppercase fw-bold">Estado</span>
             <div class="mt-1">
                 {% if run.status == 'completed' %}
-                    <span class="badge bg-success fs-6"><i class="bi bi-check-circle-fill me-1"></i> Completado</span>
+                    <span class="badge badge-status-success fs-6"><i class="bi bi-check-circle-fill me-1"></i> Completado</span>
                 {% elif run.status == 'running' %}
-                    <span class="badge bg-warning text-dark fs-6"><i class="bi bi-arrow-repeat spin me-1"></i> En ejecución</span>
+                    <span class="badge badge-status-warning fs-6"><i class="bi bi-arrow-repeat spin me-1"></i> En ejecución</span>
                 {% else %}
-                    <span class="badge bg-danger fs-6"><i class="bi bi-x-circle-fill me-1"></i> Error</span>
+                    <span class="badge badge-status-danger fs-6" title="{{ run.error_message or '' }}"><i class="bi bi-x-circle-fill me-1"></i> Error</span>
                 {% endif %}
             </div>
         </div>
@@ -17,26 +17,26 @@
     <div class="col-md-3">
         <div class="card bg-dark-steam border-secondary p-3">
             <span class="text-muted small text-uppercase fw-bold">Entradas Realizadas</span>
-            <h4 class="mt-1 mb-0 text-light">{{ run.total_entries }}</h4>
+            <h4 class="mt-1 mb-0 text-white fw-bold">{{ run.total_entries }}</h4>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card bg-dark-steam border-secondary p-3">
             <span class="text-muted small text-uppercase fw-bold">Puntos Gastados</span>
-            <h4 class="mt-1 mb-0 text-warning">{{ run.total_points_spent }}P</h4>
+            <h4 class="mt-1 mb-0 text-warning fw-bold">{{ run.total_points_spent }}P</h4>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card bg-dark-steam border-secondary p-3">
             <span class="text-muted small text-uppercase fw-bold">Puntos Iniciales / Finales</span>
-            <h4 class="mt-1 mb-0 text-info">{{ run.initial_points or '--' }}P → {{ run.final_points if run.final_points is not none else '--' }}P</h4>
+            <h4 class="mt-1 mb-0 text-info fw-semibold">{{ run.initial_points or '--' }}P → {{ run.final_points if run.final_points is not none else '--' }}P</h4>
         </div>
     </div>
 </div>
 
 {% if run.error_message %}
-<div class="alert alert-danger mt-3 mb-0" role="alert">
+<div class="alert alert-danger bg-dark-steam border-danger text-danger mt-3 mb-0" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
-    <strong>Mensaje de error:</strong> {{ run.error_message }}
+    <strong>Mensaje de error:</strong> <span class="text-white">{{ run.error_message }}</span>
 </div>
 {% endif %}
