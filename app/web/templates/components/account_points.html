@@ -17,17 +17,8 @@
     </div>
 {% else %}
     <div class="p-3 rounded bg-dark border {% if limit_reached %}border-warning{% else %}border-secondary{% endif %}">
-        <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="mb-2">
             <span class="text-muted small text-uppercase fw-bold">Puntos Disponibles</span>
-            <button class="btn btn-sm btn-outline-info py-0 px-2" 
-                    hx-get="/partials/account-points" 
-                    hx-target="#account-points-container" 
-                    hx-swap="innerHTML"
-                    hx-indicator="#points-spinner"
-                    title="Actualizar puntos ahora">
-                <span id="points-spinner" class="spinner-border spinner-border-sm me-1 htmx-indicator" role="status" style="width: 10px; height: 10px;"></span>
-                <i class="bi bi-arrow-clockwise"></i> Actualizar
-            </button>
         </div>
         
         <div class="d-flex align-items-baseline gap-2">
