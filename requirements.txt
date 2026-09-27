@@ -12,3 +12,4 @@ aiofiles==24.1.0
 rich==13.9.4
 python-multipart>=0.0.18
 brotli>=1.1.0
+curl_cffi>=0.10.0

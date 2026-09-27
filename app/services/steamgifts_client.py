@@ -4,7 +4,23 @@ import logging
 import re
 from typing import List, Optional
 
-import requests
+try:
+    from curl_cffi import requests as http_requests
+    from curl_cffi.requests.exceptions import (
+        ConnectionError as HttpConnectionError,
+        HTTPError as HttpHTTPError,
+        Timeout as HttpTimeout,
+    )
+    HAS_CURL_CFFI = True
+except ImportError:
+    import requests as http_requests
+    from requests.exceptions import (
+        ConnectionError as HttpConnectionError,
+        HTTPError as HttpHTTPError,
+        Timeout as HttpTimeout,
+    )
+    HAS_CURL_CFFI = False
+
 from bs4 import BeautifulSoup
 
 from app.schemas.giveaway import AccountInfo, EntryResult, GiveawayInfo
@@ -16,7 +32,12 @@ class SteamGiftsClient:
     """Cliente que gestiona la sesión y las peticiones a SteamGifts."""
 
     def __init__(self, phpsessid: str, base_url: str, user_agent: str, timeout: float):
-        self.session = requests.Session()
+        if HAS_CURL_CFFI:
+            self.session = http_requests.Session(impersonate="chrome120")
+            logger.debug("Usando curl_cffi (impersonate='chrome120') para evadir Cloudflare TLS fingerprinting.")
+        else:
+            self.session = http_requests.Session()
+            logger.debug("curl_cffi no disponible, usando requests estándar.")
         cookie_limpia = str(phpsessid).strip().strip('"').strip("'")
         self.phpsessid = cookie_limpia
         self.session.cookies.set("PHPSESSID", cookie_limpia, domain="www.steamgifts.com")
@@ -49,29 +70,31 @@ class SteamGiftsClient:
                     f"Respuesta HTTP inesperada de SteamGifts (Código {response.status_code}).",
                 )
 
-            # Comprobar si Cloudflare interceptó la respuesta con HTTP 200
+            # Si aparecen los puntos de navegación, el usuario está correctamente autenticado
+            if "nav__points" in response.text:
+                return True, "Sesión válida"
+
+            # Si no hay puntos, verificar si Cloudflare interceptó con una pantalla de comprobación
             texto_lower = response.text.lower()
-            if "cf-browser-verification" in texto_lower or "just a moment" in texto_lower or "challenge-platform" in texto_lower:
+            if "<title>just a moment...</title>" in texto_lower or "cf-browser-verification" in texto_lower:
                 return (
                     False,
                     "Cloudflare ha interceptado la conexión con una pantalla de comprobación de navegador ('Just a moment...').",
                 )
 
-            if "nav__points" not in response.text:
-                soup_title = re.search(r'<title>(.*?)</title>', response.text, re.IGNORECASE)
-                titulo = soup_title.group(1).strip() if soup_title else "Sin título"
-                logger.warning(f"Respuesta sin indicador de puntos. Título de página: '{titulo}', longitud HTML: {len(response.text)}")
-                return (
-                    False,
-                    f"La cookie PHPSESSID ({self.phpsessid[:6]}...) no tiene sesión activa (Página devuelta: '{titulo}'). Verifica que la cookie sea la de tu sesión actual.",
-                )
-            return True, "Sesión válida"
-        except requests.exceptions.ConnectionError as e:
+            soup_title = re.search(r'<title>(.*?)</title>', response.text, re.IGNORECASE)
+            titulo = soup_title.group(1).strip() if soup_title else "Sin título"
+            logger.warning(f"Respuesta sin indicador de puntos. Título de página: '{titulo}', longitud HTML: {len(response.text)}")
+            return (
+                False,
+                f"La cookie PHPSESSID ({self.phpsessid[:6]}...) no tiene sesión activa (Página devuelta: '{titulo}'). Verifica que la cookie sea la de tu sesión actual.",
+            )
+        except HttpConnectionError as e:
             return (
                 False,
                 f"Error de red o resolución DNS: No se pudo conectar a {self.base_url}. Verifica que el contenedor tenga acceso a Internet.",
             )
-        except requests.exceptions.Timeout:
+        except HttpTimeout:
             return (
                 False,
                 f"Tiempo de espera agotado al conectar a {self.base_url} (tras {self.timeout} segundos).",
@@ -163,7 +186,7 @@ class SteamGiftsClient:
             )
             return giveaways
 
-        except requests.exceptions.HTTPError as e:
+        except HttpHTTPError as e:
             if e.response and e.response.status_code == 429:
                 logger.warning(f"Rate limit alcanzado (429) en {category_name}")
             else:
@@ -222,7 +245,7 @@ class SteamGiftsClient:
                     error_message=msg_error,
                 )
 
-        except requests.exceptions.HTTPError as e:
+        except HttpHTTPError as e:
             if e.response and e.response.status_code == 429:
                 logger.warning(f"Rate limit (429) al entrar en {game_name}")
                 return EntryResult(
