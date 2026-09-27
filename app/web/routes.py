@@ -209,7 +209,7 @@ async def partial_save_config(request: Request):
     category_delay = str(form_data.get("category_delay_seconds", "5.0")).strip()
 
     updates = {}
-    if phpsessid:
+    if phpsessid and "•" not in phpsessid and "*" not in phpsessid:
         updates["STEAMGIFTS_PHPSESSID"] = phpsessid
     if max_entries.isdigit():
         updates["MAX_ENTRIES_PER_RUN"] = int(max_entries)
