@@ -94,7 +94,7 @@ class SteamGiftsClient:
             separador = "&" if "?" in category_url else "?"
             url = f"{self.base_url}{category_url}{separador}page={page}"
 
-            logger.info(f"Escaneando {category_name} (pág. {page}): {url}")
+            logger.info(f"Escaneando {category_name} (pág. {page})")
             response = self.session.get(url, timeout=self.timeout)
             response.raise_for_status()
 

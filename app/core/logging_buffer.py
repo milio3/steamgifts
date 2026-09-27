@@ -2,16 +2,20 @@
 
 import html
 import logging
+import re
 from collections import deque
 from datetime import datetime
 from typing import Any, Dict, List
 
 
 def format_log_to_html(entry: Dict[str, Any]) -> str:
-    """Convierte una entrada de log a una línea HTML estilizada sin emojis para la consola."""
+    """Convierte una entrada de log a una línea HTML estilizada sin emojis ni URLs largas para la consola."""
     t = entry["time"]
     raw_msg = entry["msg"]
-    escaped_msg = html.escape(raw_msg)
+    # Limpiar URLs que puedan romper el formato visual de la consola
+    clean_msg = re.sub(r'https?://\S+', '', raw_msg).strip()
+    clean_msg = re.sub(r':\s*$', '', clean_msg)
+    escaped_msg = html.escape(clean_msg)
     level = entry["level"]
 
     color_class = "text-light"
