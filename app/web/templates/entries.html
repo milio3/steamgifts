@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Historial de Entradas{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="m-0"><i class="bi bi-list-ul text-primary"></i> Historial de Entradas</h2>
+</div>
+
+<div class="card border-secondary bg-dark-steam-light shadow-sm mb-4">
+    <div class="card-body">
+        <form id="filters-form" class="row g-3 align-items-end" hx-get="/partials/entries-table" hx-target="#entries-table-container">
+            <div class="col-md-3">
+                <label for="category" class="form-label text-muted small">Categoría</label>
+                <select id="category" name="category" class="form-select bg-dark text-light border-secondary">
+                    <option value="">Todas</option>
+                    <option value="wishlist">Wishlist</option>
+                    <option value="dlc">DLC</option>
+                    <option value="group">Group</option>
+                    <option value="multiple_copies">Multiple Copies</option>
+                    <option value="new">New</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="status" class="form-label text-muted small">Resultado</label>
+                <select id="status" name="status" class="form-select bg-dark text-light border-secondary">
+                    <option value="">Todos</option>
+                    <option value="success">Éxito</option>
+                    <option value="error">Error</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="date_range" class="form-label text-muted small">Rango de fechas</label>
+                <div class="input-group">
+                    <input type="date" class="form-control bg-dark text-light border-secondary" name="date_start">
+                    <span class="input-group-text bg-secondary border-secondary text-light">a</span>
+                    <input type="date" class="form-control bg-dark text-light border-secondary" name="date_end">
+                </div>
+            </div>
+            <div class="col-md-2 d-grid">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-filter"></i> Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-secondary bg-dark-steam-light shadow-sm">
+    <div class="card-body p-0">
+        <div id="entries-table-container" hx-get="/partials/entries-table" hx-trigger="load" hx-swap="innerHTML">
+            <div class="d-flex justify-content-center my-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando entradas...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

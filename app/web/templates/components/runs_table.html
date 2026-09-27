@@ -1,0 +1,60 @@
+<!-- Tabla de ejecuciones del bot -->
+<div class="table-responsive">
+    <table class="table table-dark table-hover table-striped align-middle m-0 custom-table">
+        <thead class="table-dark-steam">
+            <tr>
+                <th scope="col" class="ps-3">ID</th>
+                <th scope="col">Inicio</th>
+                <th scope="col">Fin</th>
+                <th scope="col" class="text-center">Estado</th>
+                <th scope="col" class="text-center">Entradas</th>
+                <th scope="col" class="text-center">Puntos Gastados</th>
+                <th scope="col" class="text-center">Puntos Finales</th>
+                <th scope="col" class="text-end pe-3">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for run in runs %}
+            <tr>
+                <td class="ps-3 fw-bold text-light">#{{ run.id }}</td>
+                <td class="text-muted small">
+                    {{ run.started_at.strftime('%d/%m/%Y %H:%M:%S') if run.started_at else '--' }}
+                </td>
+                <td class="text-muted small">
+                    {{ run.finished_at.strftime('%d/%m/%Y %H:%M:%S') if run.finished_at else 'En curso...' }}
+                </td>
+                <td class="text-center">
+                    {% if run.status == 'completed' %}
+                        <span class="badge bg-success bg-opacity-25 text-success border border-success">
+                            <i class="bi bi-check-circle-fill me-1"></i> Completado
+                        </span>
+                    {% elif run.status == 'running' %}
+                        <span class="badge bg-warning bg-opacity-25 text-warning border border-warning">
+                            <i class="bi bi-arrow-repeat spin me-1"></i> En ejecución
+                        </span>
+                    {% else %}
+                        <span class="badge bg-danger bg-opacity-25 text-danger border border-danger" title="{{ run.error_message or '' }}">
+                            <i class="bi bi-x-circle-fill me-1"></i> Error
+                        </span>
+                    {% endif %}
+                </td>
+                <td class="text-center fw-bold text-light">{{ run.total_entries }}</td>
+                <td class="text-center text-warning fw-bold">{{ run.total_points_spent }}P</td>
+                <td class="text-center text-info">{{ run.final_points if run.final_points is not none else '--' }}P</td>
+                <td class="text-end pe-3">
+                    <a href="/runs/{{ run.id }}" class="btn btn-sm btn-outline-info">
+                        <i class="bi bi-eye"></i> Detalle
+                    </a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="8" class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                    No hay ejecuciones registradas.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

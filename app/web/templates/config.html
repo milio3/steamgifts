@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="m-0"><i class="bi bi-gear text-primary"></i> Configuración</h2>
+</div>
+
+<div class="alert alert-info bg-dark-steam border-info text-info d-flex align-items-center mb-4" role="alert">
+    <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+    <div>
+        <strong>Nota informativa:</strong> Esta pantalla muestra los parámetros activos cargados desde el archivo <code>.env</code>. Para modificar cualquiera de estos valores, edita dicho archivo y reinicia el servicio.
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Credenciales -->
+        <div class="card border-secondary bg-dark-steam-light shadow-sm mb-4">
+            <div class="card-header border-secondary bg-transparent py-3">
+                <h5 class="card-title m-0"><i class="bi bi-shield-lock text-warning"></i> Credenciales de Sesión</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">COOKIE DE SESIÓN (PHPSESSID)</label>
+                    <div class="input-group">
+                        <input type="password" id="cookie-input" class="form-control bg-dark text-light border-secondary font-monospace" 
+                               value="{{ settings.STEAMGIFTS_PHPSESSID }}" readonly>
+                        <button class="btn btn-outline-secondary" type="button" id="toggle-cookie-btn">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <div class="form-text text-muted">
+                        {% if settings.STEAMGIFTS_PHPSESSID %}
+                            <span class="text-success"><i class="bi bi-check-circle"></i> Cookie configurada ({{ cookie_oculta }})</span>
+                        {% else %}
+                            <span class="text-danger"><i class="bi bi-exclamation-circle"></i> Cookie no configurada en .env</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label text-muted small fw-bold">URL BASE</label>
+                    <input type="text" class="form-control bg-dark text-light border-secondary" value="{{ settings.STEAMGIFTS_BASE_URL }}" readonly>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parámetros de ejecución -->
+        <div class="card border-secondary bg-dark-steam-light shadow-sm">
+            <div class="card-header border-secondary bg-transparent py-3">
+                <h5 class="card-title m-0"><i class="bi bi-sliders text-success"></i> Parámetros de Rate Limiting y Control</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-bold">MÁXIMO DE ENTRADAS POR RONDA</label>
+                        <input type="text" class="form-control bg-dark text-light border-secondary" value="{{ settings.MAX_ENTRIES_PER_RUN }}" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-bold">TIMEOUT DE PETICIONES</label>
+                        <input type="text" class="form-control bg-dark text-light border-secondary" value="{{ settings.HTTP_TIMEOUT_SECONDS }} segundos" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-bold">DELAY ENTRE PETICIONES (JITTER)</label>
+                        <input type="text" class="form-control bg-dark text-light border-secondary" value="{{ settings.MIN_DELAY_SECONDS }}s - {{ settings.MAX_DELAY_SECONDS }}s" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-bold">DELAY ENTRE CATEGORÍAS</label>
+                        <input type="text" class="form-control bg-dark text-light border-secondary" value="{{ settings.CATEGORY_DELAY_SECONDS }} segundos" readonly>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label text-muted small fw-bold">BASE DE DATOS (SQLITE)</label>
+                        <input type="text" class="form-control bg-dark text-light border-secondary font-monospace" value="{{ settings.DATABASE_URL }}" readonly>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Verificación de sesión -->
+        <div class="card border-secondary bg-dark-steam-light shadow-sm">
+            <div class="card-header border-secondary bg-transparent py-3">
+                <h5 class="card-title m-0"><i class="bi bi-check-circle text-primary"></i> Diagnóstico de Conexión</h5>
+            </div>
+            <div class="card-body text-center">
+                <p class="text-muted small">Realiza una consulta a SteamGifts con la cookie actual para verificar la validez de la sesión, puntos y nivel de cuenta.</p>
+                <button class="btn btn-outline-primary mb-3" 
+                        hx-get="/partials/verify-session" 
+                        hx-target="#session-result"
+                        hx-indicator="#verify-spinner">
+                    <span id="verify-spinner" class="spinner-border spinner-border-sm me-1 htmx-indicator" role="status"></span>
+                    <i class="bi bi-shield-check"></i> Verificar Sesión
+                </button>
+                <div id="session-result" class="mt-2"></div>
+            </div>
+        </div>
+
+        <div class="card border-secondary bg-dark-steam-light shadow-sm mt-4">
+            <div class="card-header border-secondary bg-transparent py-3">
+                <h6 class="card-title m-0"><i class="bi bi-info-circle text-info"></i> ¿Cómo obtener la cookie?</h6>
+            </div>
+            <div class="card-body small text-muted text-start">
+                <ol class="ps-3 mb-0">
+                    <li>Abre <a href="https://www.steamgifts.com" target="_blank" class="text-info">SteamGifts</a> e inicia sesión con Steam.</li>
+                    <li>Pulsa <kbd>F12</kbd> (Herramientas de Desarrollador).</li>
+                    <li>Pestaña <strong>Application</strong> o <strong>Almacenamiento</strong> → <strong>Cookies</strong>.</li>
+                    <li>Busca <code>PHPSESSID</code> y copia su valor.</li>
+                    <li>Pégalo en el archivo <code>.env</code> como <code>STEAMGIFTS_PHPSESSID=...</code></li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

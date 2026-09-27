@@ -1,0 +1,24 @@
+services:
+  steamgifts-bot:
+    build:
+      context: .
+    container_name: steamgifts-bot
+    restart: unless-stopped
+    ports:
+      - "8085:80"
+    environment:
+      - TZ=Europe/Madrid
+    env_file:
+      - .env
+    volumes:
+      - /mnt/dietpi_userdata/apps/steamgifts-bot/data:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost/health\")' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

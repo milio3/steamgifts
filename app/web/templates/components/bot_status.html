@@ -1,0 +1,11 @@
+<!-- Indicador de estado del bot para el navbar -->
+{% if running %}
+    <span class="badge bg-danger border border-danger p-2 px-3 shadow-sm pulse-animation d-flex align-items-center gap-2">
+        <div class="spinner-grow spinner-grow-sm text-light" role="status" style="width: 12px; height: 12px;"></div>
+        EJECUTÁNDOSE...
+    </span>
+{% else %}
+    <span class="badge bg-success bg-opacity-25 text-success border border-success p-2 px-3">
+        <i class="bi bi-check-circle-fill me-1"></i> INACTIVO
+    </span>
+{% endif %}

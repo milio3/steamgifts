@@ -1,0 +1,60 @@
+<!-- Tabla de entradas reutilizable -->
+<div class="table-responsive">
+    <table class="table table-dark table-hover table-striped align-middle m-0 custom-table">
+        <thead class="table-dark-steam">
+            <tr>
+                <th scope="col" class="ps-3">Fecha/Hora</th>
+                <th scope="col">Juego</th>
+                <th scope="col">Categoría</th>
+                <th scope="col" class="text-center">Puntos</th>
+                <th scope="col" class="text-center">Estado</th>
+                <th scope="col" class="text-end pe-3">Sorteo</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr>
+                <td class="ps-3 text-muted small">
+                    {{ entry.timestamp.strftime('%d/%m/%Y %H:%M') if entry.timestamp else '--' }}
+                </td>
+                <td class="fw-medium text-light text-truncate" style="max-width: 250px;" title="{{ entry.game_name }}">
+                    {{ entry.game_name }}
+                </td>
+                <td>
+                    <span class="badge badge-{{ entry.category|lower }} text-capitalize px-2 py-1 rounded-pill">
+                        {{ entry.category }}
+                    </span>
+                </td>
+                <td class="text-center">
+                    <span class="text-warning fw-bold">{{ entry.points_spent }}P</span>
+                </td>
+                <td class="text-center">
+                    {% if entry.result == 'success' %}
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
+                            <i class="bi bi-check-circle"></i> Éxito
+                        </span>
+                    {% else %}
+                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25" 
+                              title="{{ entry.error_message or '' }}">
+                            <i class="bi bi-x-circle"></i> Error
+                        </span>
+                    {% endif %}
+                </td>
+                <td class="text-end pe-3">
+                    <a href="https://www.steamgifts.com/giveaway/{{ entry.giveaway_code }}/" 
+                       target="_blank" class="text-decoration-none text-info font-monospace small">
+                        {{ entry.giveaway_code }} <i class="bi bi-box-arrow-up-right ms-1"></i>
+                    </a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                    No hay entradas registradas todavía.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
