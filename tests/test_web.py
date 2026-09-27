@@ -196,3 +196,11 @@ def test_parcial_config_modal(client):
     assert "category-sortable-item" in response.text
 
 
+def test_favicon_retorna_200(client):
+    """Comprueba que el favicon se sirva correctamente."""
+    response = client.get("/favicon.ico")
+    assert response.status_code == 200
+    assert "svg" in response.headers.get("content-type", "")
+
+
+
