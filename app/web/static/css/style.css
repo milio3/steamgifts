@@ -212,6 +212,12 @@ main {
     border-top: 2px solid var(--sg-primary) !important;
 }
 
+/* Panel de Lanzamiento con altura nivelada */
+.launcher-panel {
+    height: 480px;
+    max-height: 480px;
+}
+
 /* Terminal / Consola de Ejecución en Vivo */
 .terminal-window {
     background-color: #0b0f15;
@@ -221,8 +227,8 @@ main {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
-    height: 100%;
-    min-height: 400px;
+    height: 480px;
+    max-height: 480px;
 }
 
 .terminal-header {
@@ -230,6 +236,7 @@ main {
     border-bottom: 1px solid #1f2b38;
     padding: 10px 14px;
     flex-shrink: 0;
+    height: 46px;
 }
 
 .terminal-dot {
@@ -249,11 +256,34 @@ main {
     font-size: 0.85rem;
     color: #c7d5e0;
     flex: 1 1 auto;
-    height: 100%;
-    min-height: 350px;
+    height: calc(480px - 46px);
+    max-height: calc(480px - 46px);
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 14px 16px;
     line-height: 1.6;
+    scrollbar-width: thin;
+    scrollbar-color: #2a475e #080c10;
+}
+
+/* Barra de desplazamiento estilizada para WebKit (Chrome, Edge, Safari) */
+.terminal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.terminal-body::-webkit-scrollbar-track {
+    background: #080c10;
+    border-radius: 0 0 8px 0;
+}
+
+.terminal-body::-webkit-scrollbar-thumb {
+    background: #2a475e;
+    border-radius: 4px;
+    border: 1px solid #171d25;
+}
+
+.terminal-body::-webkit-scrollbar-thumb:hover {
+    background: #66c0f4;
 }
 
 /* Iconos SVG Tailwind */
