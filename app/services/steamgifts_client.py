@@ -29,21 +29,45 @@ class SteamGiftsClient:
         self.timeout = timeout
         self._xsrf_token: Optional[str] = None
 
-    def is_session_valid(self) -> bool:
-        """Verifica si la cookie PHPSESSID es válida comprobando elementos de usuario logueado."""
+    def check_session(self) -> tuple[bool, str]:
+        """Comprueba el estado de la sesión y retorna si es válida junto con el motivo detallado."""
         try:
             response = self.session.get(self.base_url, timeout=self.timeout)
+            if response.status_code == 403:
+                return (
+                    False,
+                    "Cloudflare ha bloqueado la petición (HTTP 403 Forbidden). La IP o las cabeceras han sido bloqueadas por Cloudflare.",
+                )
             if response.status_code != 200:
-                logger.warning(f"Respuesta HTTP {response.status_code} al verificar sesión")
-                return False
-            # Si hay nav__points, el usuario está logueado
-            valida = "nav__points" in response.text
-            if not valida:
-                logger.warning("Sesión inválida: no se encontró el indicador de puntos")
-            return valida
+                return (
+                    False,
+                    f"Respuesta HTTP inesperada de SteamGifts (Código {response.status_code}).",
+                )
+            if "nav__points" not in response.text:
+                return (
+                    False,
+                    "La cookie PHPSESSID no tiene sesión activa (SteamGifts responde 200 pero muestra el botón de inicio de sesión). Comprueba que hayas copiado la cookie correcta.",
+                )
+            return True, "Sesión válida"
+        except requests.exceptions.ConnectionError as e:
+            return (
+                False,
+                f"Error de red o resolución DNS: No se pudo conectar a {self.base_url}. Verifica que el contenedor tenga acceso a Internet.",
+            )
+        except requests.exceptions.Timeout:
+            return (
+                False,
+                f"Tiempo de espera agotado al conectar a {self.base_url} (tras {self.timeout} segundos).",
+            )
         except Exception as e:
-            logger.error(f"Error comprobando sesión: {e}")
-            return False
+            return False, f"Error inesperado al comprobar sesión: {e}"
+
+    def is_session_valid(self) -> bool:
+        """Verifica si la cookie PHPSESSID es válida comprobando elementos de usuario logueado."""
+        valida, motivo = self.check_session()
+        if not valida:
+            logger.warning(f"Sesión no válida: {motivo}")
+        return valida
 
     def get_account_info(self) -> AccountInfo:
         """Obtiene puntos, nivel, nombre de usuario y token XSRF de la cuenta."""
