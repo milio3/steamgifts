@@ -32,18 +32,11 @@ function initPasswordToggle() {
 }
 
 /**
- * Añade confirmación y estado visual al lanzar el bot desde el Dashboard
+ * Añade estado visual al lanzar el bot desde el Dashboard sin diálogos de confirmación
  */
 function initRunBotForm() {
     const form = document.getElementById('run-bot-form');
     if (form) {
-        form.addEventListener('htmx:confirm', (e) => {
-            e.preventDefault();
-            if (confirm('¿Estás seguro de que quieres iniciar la ejecución del bot?')) {
-                e.detail.issueRequest();
-            }
-        });
-
         form.addEventListener('htmx:beforeRequest', () => {
             const btn = document.getElementById('btn-run-bot');
             if (btn) {
@@ -61,7 +54,7 @@ function initRunBotForm() {
                     btn.classList.add('btn-warning');
                 } else {
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-play-fill fs-4 me-1"></i> Iniciar Ejecución';
+                    btn.innerHTML = '<svg class="tailwind-svg-icon me-2" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" /></svg> Iniciar Ejecución';
                     alert('Error al iniciar el bot.');
                 }
             }
@@ -70,7 +63,7 @@ function initRunBotForm() {
 }
 
 /**
- * Reordenación de categorías con Drag & Drop en la página de Configuración
+ * Reordenación de categorías con Drag & Drop en la página/modal de Configuración
  */
 function initConfigCategorySorting() {
     const list = document.getElementById('config-category-list');
@@ -135,62 +128,12 @@ function initConfigCategorySorting() {
 }
 
 /**
- * Preservación del estado abierto/cerrado de las sesiones de ejecución
- */
-function initAccordionStatePreservation() {
-    let accordionState = { open: new Set(), closed: new Set() };
-
-    document.body.addEventListener('htmx:beforeSwap', (evt) => {
-        if (evt.detail.target.id === 'sessions-container') {
-            accordionState = { open: new Set(), closed: new Set() };
-            document.querySelectorAll('#sessions-container .accordion-collapse').forEach((el) => {
-                if (el.classList.contains('show')) {
-                    accordionState.open.add(el.id);
-                } else {
-                    accordionState.closed.add(el.id);
-                }
-            });
-        }
-    });
-
-    document.body.addEventListener('htmx:afterSwap', (evt) => {
-        if (evt.detail.target.id === 'sessions-container') {
-            // Aplicar estado previo a los acordeones
-            accordionState.closed.forEach((id) => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.classList.remove('show');
-                    const btn = document.querySelector(`[data-bs-target="#${id}"]`);
-                    if (btn) {
-                        btn.classList.add('collapsed');
-                        btn.setAttribute('aria-expanded', 'false');
-                    }
-                }
-            });
-
-            accordionState.open.forEach((id) => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.classList.add('show');
-                    const btn = document.querySelector(`[data-bs-target="#${id}"]`);
-                    if (btn) {
-                        btn.classList.remove('collapsed');
-                        btn.setAttribute('aria-expanded', 'true');
-                    }
-                }
-            });
-        }
-    });
-}
-
-/**
  * Auto-scroll hacia abajo de la consola web en el Dashboard
  */
 function initConsoleAutoScroll() {
     const consoleBody = document.getElementById('console-body');
     if (!consoleBody) return;
 
-    // Escuchar el evento de HTMX después de actualizar los logs de la consola
     document.body.addEventListener('htmx:afterSwap', (evt) => {
         if (evt.detail.target.id === 'console-logs') {
             consoleBody.scrollTop = consoleBody.scrollHeight;
@@ -198,27 +141,19 @@ function initConsoleAutoScroll() {
     });
 }
 
-// Inicialización de la preservación de acordeones
-initAccordionStatePreservation();
-
 // HTMX Events Globales
 document.body.addEventListener('htmx:afterSwap', function(evt) {
-    // Si se actualizó el status a 'running', actualizar el botón de ejecución y el badge de la consola
+    // Si se cargó el contenido del modal de configuración, inicializar sus controles
+    if (evt.detail.target.id === 'configModalContent') {
+        initPasswordToggle();
+        initConfigCategorySorting();
+    }
+
+    // Si se actualizó el status del bot
     if (evt.detail.target.id === 'bot-status-container') {
         const isRunning = evt.detail.target.innerHTML.includes('status-pill-running') || 
                           evt.detail.target.innerHTML.includes('Bot en ejecución');
         const btnRun = document.getElementById('btn-run-bot');
-        const liveBadge = document.getElementById('console-live-badge');
-
-        if (liveBadge) {
-            if (isRunning) {
-                liveBadge.className = 'badge bg-success-subtle border border-success-subtle text-success small';
-                liveBadge.innerHTML = '<span class="spinner-border spinner-border-sm me-1" style="width: 10px; height: 10px;"></span> Ejecución en curso';
-            } else {
-                liveBadge.className = 'badge bg-dark border border-secondary text-info small';
-                liveBadge.innerHTML = '<i class="bi bi-terminal me-1"></i> Salida de consola';
-            }
-        }
 
         if (btnRun) {
             if (isRunning) {

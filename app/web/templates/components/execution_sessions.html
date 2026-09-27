@@ -1,130 +1,84 @@
-<!-- Componente: Sesiones de ejecución con todas sus entradas -->
-<div class="accordion accordion-flush" id="accordionSessions">
-    {% for run in runs %}
-    <div class="accordion-item bg-dark-steam-light border-secondary mb-3 rounded overflow-hidden shadow-sm">
-        <h2 class="accordion-header" id="heading-run-{{ run.id }}">
-            <button class="accordion-button bg-dark-steam text-light px-3 py-3 {% if not loop.first %}collapsed{% endif %}" 
-                    type="button" 
-                    data-bs-toggle="collapse" 
-                    data-bs-target="#collapse-run-{{ run.id }}" 
-                    aria-expanded="{{ 'true' if loop.first else 'false' }}" 
-                    aria-controls="collapse-run-{{ run.id }}">
-                <div class="d-flex flex-wrap align-items-center justify-content-between w-100 me-3 gap-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="fs-6 fw-bold text-info d-flex align-items-center gap-1">
-                            <svg class="tailwind-svg-icon text-info" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm14.024-.983a1.125 1.125 0 0 1 0 1.966l-5.603 3.113A1.125 1.125 0 0 1 9 15.113V8.887c0-.857.921-1.4 1.671-.983l5.603 3.113Z" clip-rule="evenodd" /></svg>
-                            Sesión #{{ run.id }}
-                        </span>
-                        <span class="text-muted small">
+<!-- Componente: Sesiones de ejecución en formato compacto de una línea (máx 5) -->
+<div class="execution-sessions-list">
+    {% if runs %}
+        <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle mb-0 custom-table">
+                <thead class="table-dark-steam">
+                    <tr class="text-muted small text-uppercase" style="letter-spacing: 0.5px;">
+                        <th scope="col" class="ps-3" style="width: 110px;">Sesión</th>
+                        <th scope="col" style="width: 170px;">Fecha y Hora</th>
+                        <th scope="col">Sorteos Procesados</th>
+                        <th scope="col" class="text-center" style="width: 140px;">Puntos</th>
+                        <th scope="col" class="text-center" style="width: 120px;">Estado</th>
+                        <th scope="col" class="text-end pe-3" style="width: 60px;">Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for run in runs %}
+                    <tr>
+                        <td class="ps-3">
+                            <span class="fw-bold text-info font-monospace">Sesión #{{ run.id }}</span>
+                        </td>
+                        <td class="text-muted small font-monospace">
                             {{ run.started_at.strftime('%d/%m/%Y %H:%M:%S') if run.started_at else '--' }}
-                        </span>
-                    </div>
-
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="badge bg-dark border border-secondary text-light px-2 py-1">
-                            {{ run.total_entries }} entrada(s)
-                        </span>
-                        <span class="badge bg-dark border border-secondary text-warning px-2 py-1">
-                            {{ run.total_points_spent }}P gastados
-                        </span>
-                        {% if run.initial_points is not none and run.final_points is not none %}
-                        <span class="badge bg-dark border border-secondary text-light px-2 py-1 small font-monospace">
-                            {{ run.initial_points }}P → {{ run.final_points }}P
-                        </span>
-                        {% endif %}
-
-                        {% if run.status == 'completed' %}
-                            <span class="badge badge-status-success px-2 py-1 d-inline-flex align-items-center gap-1">
-                                <svg class="tailwind-svg-mini text-success" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
-                                Completado
-                            </span>
-                        {% elif run.status == 'running' %}
-                            <span class="badge badge-status-warning px-2 py-1 d-inline-flex align-items-center gap-1">
-                                <span class="spinner-border spinner-border-sm me-1" role="status" style="width: 11px; height: 11px;"></span>
-                                En ejecución
-                            </span>
-                        {% else %}
-                            <span class="badge badge-status-danger px-2 py-1 d-inline-flex align-items-center gap-1" title="{{ run.error_message or '' }}">
-                                <svg class="tailwind-svg-mini text-danger" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-                                Error
-                            </span>
-                        {% endif %}
-                    </div>
-                </div>
-            </button>
-        </h2>
-        <div id="collapse-run-{{ run.id }}" 
-             class="accordion-collapse collapse {% if loop.first %}show{% endif %}" 
-             aria-labelledby="heading-run-{{ run.id }}" 
-             data-bs-parent="#accordionSessions">
-            <div class="accordion-body p-0 border-top border-secondary">
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover table-striped align-middle m-0 custom-table">
-                        <thead class="table-dark-steam">
-                            <tr>
-                                <th scope="col" class="ps-3" style="width: 140px;">Hora</th>
-                                <th scope="col">Juego</th>
-                                <th scope="col" style="width: 150px;">Categoría</th>
-                                <th scope="col" class="text-center" style="width: 100px;">Puntos</th>
-                                <th scope="col" class="text-center" style="width: 110px;">Estado</th>
-                                <th scope="col" class="text-end pe-3" style="width: 100px;">Sorteo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for entry in run.entries %}
-                            <tr>
-                                <td class="ps-3 text-muted small font-monospace">
-                                    {{ entry.timestamp.strftime('%H:%M:%S') if entry.timestamp else '--' }}
-                                </td>
-                                <td class="fw-medium text-light text-truncate" style="max-width: 320px;" title="{{ entry.game_name }}">
-                                    {{ entry.game_name }}
-                                </td>
-                                <td>
-                                    <span class="badge badge-{{ entry.category|lower }} text-capitalize px-2 py-1 rounded-pill">
-                                        {{ entry.category }}
-                                    </span>
-                                </td>
-                                <td class="text-center">
-                                    <span class="text-warning fw-bold">{{ entry.points_spent }}P</span>
-                                </td>
-                                <td class="text-center">
-                                    {% if entry.result == 'success' %}
-                                        <span class="badge badge-status-success px-2 py-1 d-inline-flex align-items-center gap-1">
-                                            <svg class="tailwind-svg-mini text-success" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
-                                            Éxito
-                                        </span>
-                                    {% else %}
-                                        <span class="badge badge-status-danger px-2 py-1 d-inline-flex align-items-center gap-1" title="{{ entry.error_message or '' }}">
-                                            <svg class="tailwind-svg-mini text-danger" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-                                            Error
-                                        </span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end pe-3">
-                                    <a href="https://www.steamgifts.com/giveaway/{{ entry.giveaway_code }}/" 
-                                       target="_blank" class="text-decoration-none text-info font-monospace small fw-semibold">
-                                        {{ entry.giveaway_code }} <i class="bi bi-box-arrow-up-right ms-1"></i>
-                                    </a>
-                                </td>
-                            </tr>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="badge bg-dark border border-secondary text-light px-2 py-1">
+                                    {{ run.total_entries }} entrada(s)
+                                </span>
+                                {% if run.entries %}
+                                    <div class="text-truncate text-secondary small" style="max-width: 380px;">
+                                        {% for entry in run.entries[:2] %}
+                                            <span class="text-light-emphasis">{{ entry.game_name }}</span>{% if not loop.last or run.entries|length > 2 %}, {% endif %}
+                                        {% endfor %}
+                                        {% if run.entries|length > 2 %}
+                                            <span class="text-muted">+{{ run.entries|length - 2 }} más</span>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <span class="text-warning fw-bold">{{ run.total_points_spent }}P</span>
+                            {% if run.initial_points is not none and run.final_points is not none %}
+                            <div class="text-muted small font-monospace" style="font-size: 0.75rem;">
+                                {{ run.initial_points }}P → {{ run.final_points }}P
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if run.status == 'completed' %}
+                                <span class="badge badge-status-success px-2 py-1 d-inline-flex align-items-center gap-1">
+                                    <svg class="tailwind-svg-mini text-success" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                                    Completado
+                                </span>
+                            {% elif run.status == 'running' %}
+                                <span class="badge badge-status-warning px-2 py-1 d-inline-flex align-items-center gap-1">
+                                    <span class="spinner-border spinner-border-sm me-1" role="status" style="width: 10px; height: 10px;"></span>
+                                    En curso
+                                </span>
                             {% else %}
-                            <tr>
-                                <td colspan="6" class="text-center py-3 text-muted small">
-                                    No se registraron entradas durante esta sesión.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                                <span class="badge badge-status-danger px-2 py-1 d-inline-flex align-items-center gap-1" title="{{ run.error_message or '' }}">
+                                    <svg class="tailwind-svg-mini text-danger" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                                    Error
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="/runs/{{ run.id }}" class="btn btn-sm btn-outline-secondary py-0 px-2 text-muted hover-light" title="Ver detalle de sesión #{{ run.id }}">
+                                <i class="bi bi-box-arrow-up-right small"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-    </div>
     {% else %}
-    <div class="card border-secondary bg-dark-steam-light text-center py-5">
-        <i class="bi bi-clock-history fs-1 text-secondary mb-3"></i>
-        <h5 class="text-light">No hay sesiones de ejecución registradas</h5>
-        <p class="text-muted small">Pulsa en "Ejecutar Bot" para iniciar la primera sesión.</p>
-    </div>
-    {% endfor %}
+        <div class="text-center py-4 text-muted small">
+            <i class="bi bi-clock-history fs-3 d-block mb-2 text-secondary"></i>
+            No hay sesiones de ejecución registradas aún.
+        </div>
+    {% endif %}
 </div>

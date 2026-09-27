@@ -186,3 +186,13 @@ def test_parcial_test_telegram(client, monkeypatch):
     assert response.status_code == 200
     assert "Mensaje enviado" in response.text
 
+
+def test_parcial_config_modal(client):
+    """Comprueba que el endpoint parcial para el modal de configuración funcione."""
+    response = client.get("/partials/config-modal")
+    assert response.status_code == 200
+    assert "config-form" in response.text
+    assert "Diagnóstico de Conexión" in response.text
+    assert "category-sortable-item" in response.text
+
+
