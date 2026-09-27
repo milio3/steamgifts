@@ -164,7 +164,7 @@ class SteamGiftsClient:
 
             if json_resp.get("type") == "success":
                 puntos = json_resp.get("points")
-                logger.info(f"  ✅ Entrada exitosa: {game_name} | Puntos restantes: {puntos}")
+                logger.info(f"✅ Entrada exitosa: {game_name} │ Puntos restantes: {puntos}")
                 return EntryResult(
                     giveaway_code=code,
                     game_name=game_name,
@@ -173,7 +173,7 @@ class SteamGiftsClient:
                 )
             else:
                 msg_error = json_resp.get("msg", "Error desconocido")
-                logger.warning(f"  ❌ Error al entrar en {game_name}: {msg_error}")
+                logger.warning(f"[ERROR] Error al entrar en {game_name}: {msg_error}")
                 return EntryResult(
                     giveaway_code=code,
                     game_name=game_name,

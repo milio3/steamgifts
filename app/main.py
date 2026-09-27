@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.database import Base, engine
+from app.core.logging_buffer import console_handler
 
 # Configuración de logging
 logging.basicConfig(
@@ -17,6 +18,7 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+logging.root.addHandler(console_handler)
 logger = logging.getLogger(__name__)
 
 # Variable global para estado del bot

@@ -22,6 +22,11 @@ class Settings(BaseSettings):
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/126.0.0.0 Safari/537.36"
     )
+    # Alertas de Telegram (Límite de puntos alcanzado)
+    TELEGRAM_ALERTS_ENABLED: bool = True
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_CHAT_ID: str = ""
+    TELEGRAM_POINTS_THRESHOLD: int = 400
 
     @field_validator("DATABASE_URL", mode="after")
     @classmethod
@@ -38,4 +43,53 @@ class Settings(BaseSettings):
     )
 
 
+from pathlib import Path
+
+
+def update_settings_and_env(updates: dict) -> bool:
+    """Actualiza los parámetros en el objeto settings y los persiste en el archivo .env."""
+    env_path = Path(".env")
+    env_lines = []
+    if env_path.exists():
+        with open(env_path, "r", encoding="utf-8") as f:
+            env_lines = f.readlines()
+
+    applied_keys = set()
+    new_lines = []
+    for line in env_lines:
+        line_clean = line.strip()
+        if "=" in line_clean and not line_clean.startswith("#"):
+            key = line_clean.split("=")[0].strip()
+            if key in updates:
+                val = updates[key]
+                if isinstance(val, str) and not (val.startswith('"') and val.endswith('"')):
+                    new_lines.append(f'{key}="{val}"\n')
+                else:
+                    new_lines.append(f"{key}={val}\n")
+                applied_keys.add(key)
+                continue
+        new_lines.append(line)
+
+    for key, val in updates.items():
+        if key not in applied_keys:
+            if isinstance(val, str) and not (val.startswith('"') and val.endswith('"')):
+                new_lines.append(f'{key}="{val}"\n')
+            else:
+                new_lines.append(f"{key}={val}\n")
+
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.writelines(new_lines)
+
+    for k, v in updates.items():
+        if hasattr(settings, k):
+            curr_val = getattr(settings, k)
+            target_type = type(curr_val) if curr_val is not None else str
+            try:
+                setattr(settings, k, target_type(v))
+            except Exception:
+                setattr(settings, k, v)
+    return True
+
+
 settings = Settings()
+

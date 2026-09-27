@@ -8,7 +8,7 @@ def test_vista_dashboard_retorna_200(client):
     response = client.get("/dashboard")
     assert response.status_code == 200
     assert "Panel de Control" in response.text
-    assert "Ejecutar Bot" in response.text
+    assert "Iniciar Ejecución" in response.text
 
 
 def test_vista_entries_retorna_200(client):
@@ -46,10 +46,10 @@ def test_parcial_stats_renderiza_metricas(client, db_session):
 
 
 def test_parcial_bot_status_inactivo(client):
-    """Comprueba el badge parcial del estado del bot."""
+    """Comprueba el badge parcial del estado del bot en reposo."""
     response = client.get("/partials/bot-status")
     assert response.status_code == 200
-    assert "INACTIVO" in response.text
+    assert "Sistema en espera" in response.text
 
 
 def test_parcial_tabla_entradas(client, db_session):
@@ -69,3 +69,120 @@ def test_parcial_tabla_entradas(client, db_session):
     assert "Monster Boy and the Cursed Kingdom" in response.text
     assert "30P" in response.text
     assert "Éxito" in response.text
+
+
+def test_dashboard_consola_y_sesiones(client):
+    """Verifica que el dashboard tenga la consola en vivo, tema oscuro y sesiones."""
+    response = client.get("/dashboard")
+    assert response.status_code == 200
+    assert 'data-bs-theme="dark"' in response.text
+    assert "terminal-window" in response.text
+    assert "console-body" in response.text
+    assert "sessions-container" in response.text
+    assert "btn-run-bot" in response.text
+
+
+def test_parcial_consola_logs(client):
+    """Verifica que el endpoint de consola devuelva logs formateados."""
+    response = client.get("/partials/console-logs")
+    assert response.status_code == 200
+    assert "console-line" in response.text or "steamgifts-bot" in response.text
+
+
+def test_parcial_sesiones_ejecucion(client, db_session):
+    """Verifica que el endpoint de sesiones devuelva las ejecuciones con sus entradas."""
+    run = RunLog(
+        status="completed",
+        total_entries=1,
+        total_points_spent=50,
+        initial_points=400,
+        final_points=350,
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+
+    entry = Entry(
+        game_name="Cyberpunk 2077",
+        giveaway_code="Cp77X",
+        giveaway_url="https://www.steamgifts.com/giveaway/Cp77X/cyberpunk-2077",
+        category="wishlist",
+        points_spent=50,
+        points_remaining=350,
+        result="success",
+        run_id=run.id,
+    )
+    db_session.add(entry)
+    db_session.commit()
+
+    response = client.get("/partials/execution-sessions")
+    assert response.status_code == 200
+    assert "Sesión #" in response.text
+    assert "Cyberpunk 2077" in response.text
+    assert "50P" in response.text
+
+
+def test_configuracion_editable_y_guardado(client):
+    """Verifica que la vista de configuración sea editable y guarde parámetros y orden."""
+    resp_cfg = client.get("/config")
+    assert resp_cfg.status_code == 200
+    assert 'name="phpsessid"' in resp_cfg.text
+    assert 'name="max_entries_per_run"' in resp_cfg.text
+    assert "category-sortable-item" in resp_cfg.text
+
+    nuevo_orden = {
+        "phpsessid": "cookie_test_12345",
+        "max_entries_per_run": "30",
+        "http_timeout_seconds": "18.0",
+        "min_delay_seconds": "4.0",
+        "max_delay_seconds": "9.0",
+        "category_delay_seconds": "6.0",
+        "category_order": ["all", "wishlist", "recommended", "multiple_copies", "dlc", "group", "new"],
+    }
+    response = client.post("/partials/save-config", data=nuevo_orden)
+    assert response.status_code == 200
+    assert "guardada" in response.text.lower()
+
+    # Comprobar que en config 'all' ahora aparece primero
+    resp_cfg2 = client.get("/config")
+    assert resp_cfg2.status_code == 200
+    idx_all = resp_cfg2.text.find('data-category="all"')
+    idx_wishlist = resp_cfg2.text.find('data-category="wishlist"')
+    assert idx_all != -1 and idx_wishlist != -1
+    assert idx_all < idx_wishlist
+
+
+def test_parcial_account_points(client, monkeypatch):
+    """Comprueba el endpoint de consulta de puntos disponibles."""
+    from app.schemas.giveaway import AccountInfo
+    monkeypatch.setattr(
+        "app.services.steamgifts_client.SteamGiftsClient.is_session_valid",
+        lambda self: True,
+    )
+    monkeypatch.setattr(
+        "app.services.steamgifts_client.SteamGiftsClient.get_account_info",
+        lambda self: AccountInfo(points=385, level=4, username="testuser", xsrf_token="tok"),
+    )
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "STEAMGIFTS_PHPSESSID", "dummy_sess")
+
+    response = client.get("/partials/account-points")
+    assert response.status_code == 200
+    assert "385 P" in response.text
+    assert "testuser" in response.text
+
+
+def test_parcial_test_telegram(client, monkeypatch):
+    """Comprueba el endpoint de prueba de Telegram."""
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "TELEGRAM_ALERTS_ENABLED", True)
+    monkeypatch.setattr(settings, "TELEGRAM_BOT_TOKEN", "dummy_token")
+    monkeypatch.setattr(settings, "TELEGRAM_CHAT_ID", "dummy_chat")
+    monkeypatch.setattr(
+        "app.services.telegram_alert.send_telegram_message",
+        lambda text: True,
+    )
+    response = client.post("/partials/test-telegram")
+    assert response.status_code == 200
+    assert "Mensaje enviado" in response.text
+

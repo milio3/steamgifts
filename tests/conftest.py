@@ -43,3 +43,11 @@ def client(db_session):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def aislar_config_categorias(tmp_path, monkeypatch):
+    """Aísla el fichero de configuración de categorías durante los tests."""
+    import app.core.categories as cats_mod
+    test_file = tmp_path / "bot_config.json"
+    monkeypatch.setattr(cats_mod, "CONFIG_PATH", test_file)
