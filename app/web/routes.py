@@ -41,8 +41,8 @@ async def raiz():
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    """Vista principal: panel de control con métricas, consola en vivo y sesiones."""
+async def dashboard(request: Request, db: Session = Depends(get_db)):
+    """Vista principal: panel de control con métricas precargadas instantáneamente."""
     order, _ = load_categories_config()
     configured_categories = []
     for idx, cat_id in enumerate(order, start=1):
@@ -58,6 +58,33 @@ async def dashboard(request: Request):
 
     is_running = getattr(main_app, "is_bot_running", False)
 
+    # Carga instantánea de métricas locales sin peticiones externas
+    total_entradas = db.query(Entry).filter(Entry.result == "success").count()
+    total_puntos = (
+        db.query(func.sum(Entry.points_spent))
+        .filter(Entry.result == "success")
+        .scalar()
+        or 0
+    )
+    hoy = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    entradas_hoy = (
+        db.query(Entry)
+        .filter(Entry.result == "success", Entry.timestamp >= hoy)
+        .count()
+    )
+    ultima_run = db.query(RunLog).order_by(RunLog.started_at.desc()).first()
+
+    # Carga de las 5 últimas sesiones de ejecución
+    runs = (
+        db.query(RunLog)
+        .options(joinedload(RunLog.entries))
+        .order_by(RunLog.started_at.desc())
+        .limit(5)
+        .all()
+    )
+
+    known_points = ultima_run.final_points if (ultima_run and ultima_run.final_points is not None) else None
+
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
@@ -65,6 +92,13 @@ async def dashboard(request: Request):
             "title": "Dashboard",
             "categories": configured_categories,
             "is_running": is_running,
+            "total_entradas": total_entradas,
+            "total_puntos": total_puntos,
+            "entradas_hoy": entradas_hoy,
+            "ultima_run": ultima_run,
+            "runs": runs,
+            "known_points": known_points,
+            "threshold": settings.TELEGRAM_POINTS_THRESHOLD,
         },
     )
 
@@ -164,18 +198,52 @@ async def partial_stats(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/partials/execution-sessions", response_class=HTMLResponse)
 async def partial_execution_sessions(request: Request, db: Session = Depends(get_db)):
-    """Fragmento HTML con las sesiones de ejecución y todas sus entradas."""
+    """Fragmento HTML con las sesiones de ejecución en formato de una línea (máx 5)."""
     runs = (
         db.query(RunLog)
         .options(joinedload(RunLog.entries))
         .order_by(RunLog.started_at.desc())
-        .limit(20)
+        .limit(5)
         .all()
     )
     return templates.TemplateResponse(
         request=request,
         name="components/execution_sessions.html",
         context={"runs": runs},
+    )
+
+
+@router.get("/partials/config-modal", response_class=HTMLResponse)
+async def partial_config_modal(request: Request):
+    """Fragmento HTML con el contenido de configuración para el modal."""
+    order, _ = load_categories_config()
+    categories_list = []
+    for idx, cat_id in enumerate(order, start=1):
+        info = AVAILABLE_CATEGORIES.get(cat_id, {})
+        categories_list.append({
+            "id": cat_id,
+            "name": info.get("name", cat_id),
+            "label": f"{idx}. {info.get('label', cat_id)}",
+            "raw_label": info.get("label", cat_id),
+            "badge_class": info.get("badge_class", f"badge-{cat_id}"),
+            "svg_icon": info.get("svg_icon", ""),
+            "priority": idx,
+        })
+
+    cookie = settings.STEAMGIFTS_PHPSESSID
+    cookie_oculta = ""
+    if cookie:
+        visible = min(8, len(cookie))
+        cookie_oculta = cookie[:visible] + "•" * max(0, len(cookie) - visible)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="components/config_form.html",
+        context={
+            "settings": settings,
+            "cookie_oculta": cookie_oculta,
+            "categories": categories_list,
+        },
     )
 
 

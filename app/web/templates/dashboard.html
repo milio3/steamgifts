@@ -5,15 +5,21 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="m-0"><i class="bi bi-speedometer2 text-primary"></i> Panel de Control</h2>
+    <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2 py-1 px-3 text-muted hover-light shadow-sm"
+            hx-get="/partials/stats"
+            hx-target="#stats-container"
+            hx-swap="innerHTML"
+            hx-indicator="#refresh-spinner"
+            title="Actualizar métricas">
+        <span id="refresh-spinner" class="spinner-border spinner-border-sm htmx-indicator" role="status"></span>
+        <i class="bi bi-arrow-clockwise"></i>
+        <span>Actualizar</span>
+    </button>
 </div>
 
-<!-- Tarjetas de Métricas -->
-<div id="stats-container" hx-get="/partials/stats" hx-trigger="load, every 10s" hx-swap="innerHTML">
-    <div class="d-flex justify-content-center my-5">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Cargando métricas...</span>
-        </div>
-    </div>
+<!-- Tarjetas de Métricas (Precargadas de forma instantánea) -->
+<div id="stats-container">
+    {% include "components/stats_cards.html" %}
 </div>
 
 <div class="row mt-4 align-items-stretch">
@@ -30,15 +36,43 @@
             </div>
             <div class="card-body d-flex flex-column justify-content-between p-4">
                 <div>
-                    <p class="text-light-emphasis small mb-3">
-                        Inicia una ronda de participación automática en segundo plano. El bot escaneará los sorteos disponibles respetando los límites y el orden establecido en la configuración.
-                    </p>
-                    
-                    <!-- Bloque de Puntos Disponibles en Tiempo Real -->
-                    <div id="account-points-container" class="mb-4" hx-get="/partials/account-points" hx-trigger="load" hx-swap="innerHTML">
-                        <div class="p-3 rounded bg-dark border border-secondary d-flex align-items-center">
-                            <span class="text-muted small"><span class="spinner-border spinner-border-sm me-2"></span>Consultando puntos disponibles...</span>
-                        </div>
+                    <!-- Bloque de Puntos Disponibles -->
+                    <div id="account-points-container" class="mb-4">
+                        {% if known_points is not none %}
+                            <div class="p-3 rounded bg-dark border {% if known_points >= threshold %}border-warning{% else %}border-secondary{% endif %}">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted small text-uppercase fw-bold">Puntos Disponibles</span>
+                                    <button class="btn btn-sm btn-link text-muted p-0 text-decoration-none" 
+                                            hx-get="/partials/account-points" 
+                                            hx-target="#account-points-container" 
+                                            hx-swap="innerHTML"
+                                            title="Consultar puntos en vivo en SteamGifts">
+                                        <i class="bi bi-arrow-clockwise"></i>
+                                    </button>
+                                </div>
+                                <div class="d-flex align-items-baseline gap-2">
+                                    <span class="fs-3 fw-bold {% if known_points >= threshold %}text-warning{% else %}text-light{% endif %}">
+                                        {{ known_points }} P
+                                    </span>
+                                    <span class="text-muted small">/ {{ threshold }} P máx</span>
+                                    {% if known_points >= threshold %}
+                                    <span class="badge bg-warning-subtle text-warning border border-warning small ms-auto">
+                                        <i class="bi bi-bell-fill me-1"></i> Límite alcanzado
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="p-3 rounded bg-dark border border-secondary d-flex align-items-center justify-content-between">
+                                <span class="text-muted small">Puntos disponibles no consultados</span>
+                                <button class="btn btn-sm btn-outline-secondary py-1 px-2 small"
+                                        hx-get="/partials/account-points"
+                                        hx-target="#account-points-container"
+                                        hx-swap="innerHTML">
+                                    <i class="bi bi-arrow-clockwise me-1"></i> Consultar
+                                </button>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -56,7 +90,11 @@
                     </form>
 
                     <div class="mt-3 pt-3 border-top border-secondary text-center">
-                        <a href="/config" class="text-info text-decoration-none small d-inline-flex align-items-center gap-1">
+                        <a href="#" class="text-info text-decoration-none small d-inline-flex align-items-center gap-1"
+                           data-bs-toggle="modal" 
+                           data-bs-target="#configModal" 
+                           hx-get="/partials/config-modal" 
+                           hx-target="#configModalContent">
                             <i class="bi bi-gear"></i> Modificar parámetros u orden de categorías
                         </a>
                     </div>
@@ -84,9 +122,6 @@
                             title="Limpiar registros de consola">
                         <i class="bi bi-trash small"></i>
                     </button>
-                    <span id="console-live-badge" class="badge bg-dark border border-secondary text-info small">
-                        <i class="bi bi-terminal me-1"></i> Salida en vivo
-                    </span>
                 </div>
             </div>
             <div id="console-body" class="terminal-body flex-grow-1">
@@ -98,7 +133,7 @@
     </div>
 </div>
 
-<!-- Sesiones de Ejecución (Todas las entradas incluidas por cada sesión) -->
+<!-- Sesiones de Ejecución (En formato compacto de una línea, máx 5) -->
 <div class="row mt-2">
     <div class="col-12">
         <div class="card border-secondary bg-dark-steam-light shadow-sm">
@@ -107,10 +142,9 @@
                     <svg class="tailwind-svg-icon text-warning" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
-                    <h5 class="card-title m-0">Sesiones de Ejecución</h5>
+                    <h5 class="card-title m-0">Sesiones de Ejecución (Últimas 5)</h5>
                 </div>
                 <div class="d-flex align-items-center gap-3">
-                    <span class="text-muted small d-none d-md-inline">Haz clic en cualquier sesión para desplegar u ocultar sus sorteos</span>
                     <button class="btn btn-sm btn-outline-secondary py-1 px-2 text-light" 
                             hx-get="/partials/execution-sessions" 
                             hx-target="#sessions-container" 
@@ -120,13 +154,9 @@
                     </button>
                 </div>
             </div>
-            <div class="card-body p-3">
-                <div id="sessions-container" hx-get="/partials/execution-sessions" hx-trigger="load, refreshSessions from:body" hx-swap="innerHTML">
-                    <div class="d-flex justify-content-center my-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Cargando sesiones...</span>
-                        </div>
-                    </div>
+            <div class="card-body p-0">
+                <div id="sessions-container" hx-get="/partials/execution-sessions" hx-trigger="refreshSessions from:body" hx-swap="innerHTML">
+                    {% include "components/execution_sessions.html" %}
                 </div>
             </div>
         </div>
