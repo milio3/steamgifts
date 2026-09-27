@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
@@ -33,6 +33,13 @@ templates = Jinja2Templates(directory=templates_dir)
 
 
 # ─── Vistas principales ──────────────────────────────────────────────
+
+@router.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Sirve el favicon SVG para navegadores que solicitan /favicon.ico."""
+    favicon_path = os.path.join(os.path.dirname(__file__), "static", "img", "favicon.svg")
+    return FileResponse(favicon_path, media_type="image/svg+xml")
+
 
 @router.get("/", response_class=HTMLResponse)
 async def raiz():

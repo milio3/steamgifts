@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+    <!-- Fondo minimalista con curvatura moderna -->
+    <rect width="64" height="64" rx="16" fill="#171d25"/>
+    
+    <defs>
+        <!-- Gradiente Steam Blue -->
+        <linearGradient id="sgBoxGrad" x1="12" y1="20" x2="52" y2="54" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#4ea8de"/>
+            <stop offset="100%" stop-color="#1b4965"/>
+        </linearGradient>
+        
+        <!-- Gradiente Cinta -->
+        <linearGradient id="sgRibbonGrad" x1="32" y1="12" x2="32" y2="52" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#e0f2fe"/>
+            <stop offset="100%" stop-color="#7dd3fc"/>
+        </linearGradient>
+        
+        <!-- Gradiente Tapa -->
+        <linearGradient id="sgLidGrad" x1="10" y1="21" x2="54" y2="30" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#223a54"/>
+            <stop offset="100%" stop-color="#16293d"/>
+        </linearGradient>
+    </defs>
+
+    <!-- Lazo minimalista superior -->
+    <!-- Bucle izquierdo -->
+    <path d="M32 21 C24 13 15 16 19 21 C23 23 29 21.5 32 21 Z" fill="url(#sgRibbonGrad)"/>
+    <!-- Bucle derecho -->
+    <path d="M32 21 C40 13 49 16 45 21 C41 23 35 21.5 32 21 Z" fill="url(#sgRibbonGrad)"/>
+    <!-- Nudo central -->
+    <circle cx="32" cy="21" r="2.75" fill="#ffffff"/>
+
+    <!-- Cuerpo de la caja -->
+    <rect x="15" y="29" width="34" height="23" rx="4" fill="url(#sgBoxGrad)" stroke="#38bdf8" stroke-width="1.25" stroke-opacity="0.4"/>
+    
+    <!-- Tapa de la caja -->
+    <rect x="12" y="21" width="40" height="9" rx="3.5" fill="url(#sgLidGrad)" stroke="#38bdf8" stroke-width="1.25"/>
+
+    <!-- Cinta vertical que cruza la caja -->
+    <rect x="29" y="21" width="6" height="31" rx="1" fill="url(#sgRibbonGrad)"/>
+</svg>
