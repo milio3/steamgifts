@@ -11,7 +11,7 @@ services:
     env_file:
       - .env
     volumes:
-      - /mnt/dietpi_userdata/apps/steamgifts-bot/data:/app/data
+      - /mnt/dietpi_userdata/apps/steamgifts/data:/app/data
     deploy:
       resources:
         limits:
