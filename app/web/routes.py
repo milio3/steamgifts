@@ -413,13 +413,14 @@ async def partial_verificar_sesion(request: Request):
             user_agent=settings.USER_AGENT,
             timeout=settings.HTTP_TIMEOUT_SECONDS,
         )
-        if not client.is_session_valid():
+        valida, motivo = client.check_session()
+        if not valida:
             return templates.TemplateResponse(
                 request=request,
                 name="components/session_status.html",
                 context={
                     "success": False,
-                    "error": "No se pudo validar la sesión. La cookie ha caducado o SteamGifts requiere verificación en el navegador.",
+                    "error": motivo,
                 },
             )
         info = client.get_account_info()
