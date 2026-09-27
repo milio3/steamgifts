@@ -15,6 +15,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
+COPY cli.py ./
 
 RUN mkdir -p /app/data && chown -R appuser:appuser /app/data /app
 USER appuser
