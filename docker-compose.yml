@@ -5,7 +5,19 @@ services:
     restart: unless-stopped
     ports:
       - "${PORT:-8086}:80"
-    volumes:
-      - ./data:/app/data
+    environment:
+      - TZ=Europe/Madrid
     env_file:
       - .env
+    volumes:
+      - ${DATA_PATH:-/mnt/dietpi_userdata/apps/steamgifts/data}:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost/health\")' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
