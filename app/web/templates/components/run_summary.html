@@ -1,41 +1,72 @@
-<!-- Resumen de una ejecución específica -->
+<!-- Resumen de Métricas de la Ejecución (Mismo estilo que Stats Cards del Dashboard) -->
 <div class="row g-3">
-    <div class="col-md-3">
-        <div class="card bg-dark-steam border-secondary p-3">
-            <span class="text-muted small text-uppercase fw-bold">Estado</span>
-            <div class="mt-1">
+    <!-- Estado -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card-sg">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="stat-label-sg">Estado</span>
+                <i class="bi bi-activity text-secondary fs-6 opacity-75"></i>
+            </div>
+            <div class="stat-value-sg fs-6 mt-1">
                 {% if run.status == 'completed' %}
-                    <span class="badge badge-status-success fs-6"><i class="bi bi-check-circle-fill me-1"></i> Completado</span>
+                    <span class="badge badge-sg-status-success rounded px-2 py-1">
+                        <i class="bi bi-check2 me-1"></i>Completado
+                    </span>
                 {% elif run.status == 'running' %}
-                    <span class="badge badge-status-warning fs-6"><i class="bi bi-arrow-repeat spin me-1"></i> En ejecución</span>
+                    <span class="badge badge-sg-status-warning rounded px-2 py-1">
+                        <span class="spinner-border spinner-border-sm me-1" role="status" style="width: 8px; height: 8px;"></span>En ejecución
+                    </span>
                 {% else %}
-                    <span class="badge badge-status-danger fs-6" title="{{ run.error_message or '' }}"><i class="bi bi-x-circle-fill me-1"></i> Error</span>
+                    <span class="badge badge-sg-status-danger rounded px-2 py-1" title="{{ run.error_message or '' }}">
+                        <i class="bi bi-x-circle me-1"></i>Error
+                    </span>
                 {% endif %}
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-dark-steam border-secondary p-3">
-            <span class="text-muted small text-uppercase fw-bold">Entradas Realizadas</span>
-            <h4 class="mt-1 mb-0 text-white fw-bold">{{ run.total_entries }}</h4>
+
+    <!-- Entradas Realizadas -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card-sg">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="stat-label-sg">Entradas Realizadas</span>
+                <i class="bi bi-gift text-secondary fs-6 opacity-75"></i>
+            </div>
+            <div class="stat-value-sg">
+                {{ run.total_entries }}
+            </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-dark-steam border-secondary p-3">
-            <span class="text-muted small text-uppercase fw-bold">Puntos Gastados</span>
-            <h4 class="mt-1 mb-0 text-warning fw-bold">{{ run.total_points_spent }}P</h4>
+
+    <!-- Puntos Gastados -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card-sg">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="stat-label-sg">Puntos Usados</span>
+                <i class="bi bi-coin text-secondary fs-6 opacity-75"></i>
+            </div>
+            <div class="stat-value-sg">
+                {{ run.total_points_spent }} <span class="fs-6 fw-normal text-muted">P</span>
+            </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-dark-steam border-secondary p-3">
-            <span class="text-muted small text-uppercase fw-bold">Puntos Iniciales / Finales</span>
-            <h4 class="mt-1 mb-0 text-info fw-semibold">{{ run.initial_points or '--' }}P → {{ run.final_points if run.final_points is not none else '--' }}P</h4>
+
+    <!-- Puntos Iniciales y Finales (Misma tipografía limpia) -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card-sg">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="stat-label-sg">Balance de Puntos</span>
+                <i class="bi bi-clock-history text-secondary fs-6 opacity-75"></i>
+            </div>
+            <div class="stat-value-sg fs-6 mt-1 text-light">
+                {{ run.initial_points or '--' }}P &rarr; {{ run.final_points if run.final_points is not none else '--' }}P
+            </div>
         </div>
     </div>
 </div>
 
 {% if run.error_message %}
-<div class="alert alert-danger bg-dark-steam border-danger text-danger mt-3 mb-0" role="alert">
+<div class="alert alert-danger mt-3 mb-0" style="background-color: rgba(217, 83, 79, 0.15); border: 1px solid #d9534f; color: #f87171;" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
     <strong>Mensaje de error:</strong> <span class="text-white">{{ run.error_message }}</span>
 </div>

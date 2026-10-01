@@ -37,11 +37,12 @@ class BotEngine:
         self.db = db_session
         self._stop_logged = False
 
-    def run(self, categories: Optional[List[str]] = None) -> RunSummary:
+    def run(self, categories: Optional[List[str]] = None, trigger_type: str = "manual") -> RunSummary:
         """Ejecuta el bot completo: escanea categorías y entra en giveaways."""
         self._stop_logged = False
+        modo_txt = "AUTOMÁTICA (AUTORUN)" if trigger_type == "auto" else "MANUAL"
         logger.info("═" * 60)
-        logger.info("[INICIO] INICIANDO EJECUCIÓN DEL BOT")
+        logger.info(f"[INICIO] INICIANDO EJECUCIÓN DEL BOT ({modo_txt})")
         logger.info("═" * 60)
 
         if categories:
@@ -51,7 +52,7 @@ class BotEngine:
             cats_to_run = [c for c in order if c in enabled and c in self.CATEGORY_PRIORITY]
 
         # Crear registro de ejecución en BD
-        run_log = RunLog(status="running", total_points_spent=0)
+        run_log = RunLog(status="running", total_points_spent=0, trigger_type=trigger_type)
         self.db.add(run_log)
         self.db.commit()
         self.db.refresh(run_log)
@@ -135,6 +136,7 @@ class BotEngine:
                 initial_points=run_log.initial_points,
                 final_points=run_log.final_points,
                 status=run_log.status,
+                trigger_type=run_log.trigger_type,
                 entries=summary_entries,
             )
 

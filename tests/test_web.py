@@ -117,13 +117,14 @@ def test_parcial_sesiones_ejecucion(client, db_session):
 
     response = client.get("/partials/execution-sessions")
     assert response.status_code == 200
-    assert "Sesión #" in response.text
+    assert f"#{run.id}" in response.text
     assert "Cyberpunk 2077" in response.text
     assert "50P" in response.text
 
 
-def test_configuracion_editable_y_guardado(client):
+def test_configuracion_editable_y_guardado(client, monkeypatch):
     """Verifica que la vista de configuración sea editable y guarde parámetros y orden."""
+    monkeypatch.setattr("app.web.routes.update_settings_and_env", lambda updates: True)
     resp_cfg = client.get("/config")
     assert resp_cfg.status_code == 200
     assert 'name="phpsessid"' in resp_cfg.text
@@ -137,7 +138,7 @@ def test_configuracion_editable_y_guardado(client):
         "min_delay_seconds": "4.0",
         "max_delay_seconds": "9.0",
         "category_delay_seconds": "6.0",
-        "category_order": ["all", "wishlist", "recommended", "multiple_copies", "dlc", "group", "new"],
+        "category_order": ["all", "wishlist", "recommended", "Multiple Copies", "dlc", "group", "new"],
     }
     response = client.post("/partials/save-config", data=nuevo_orden)
     assert response.status_code == 200
@@ -168,7 +169,7 @@ def test_parcial_account_points(client, monkeypatch):
 
     response = client.get("/partials/account-points")
     assert response.status_code == 200
-    assert "385 P" in response.text
+    assert "385p" in response.text
     assert "testuser" in response.text
 
 
@@ -201,6 +202,42 @@ def test_favicon_retorna_200(client):
     response = client.get("/favicon.ico")
     assert response.status_code == 200
     assert "svg" in response.headers.get("content-type", "")
+
+
+def test_diferenciacion_ejecucion_manual_y_automatica(client, db_session):
+    """Verifica que las ejecuciones manuales y automáticas muestren sus respectivos badges."""
+    run_manual = RunLog(
+        status="completed",
+        total_entries=2,
+        total_points_spent=60,
+        trigger_type="manual",
+    )
+    run_auto = RunLog(
+        status="completed",
+        total_entries=3,
+        total_points_spent=90,
+        trigger_type="auto",
+    )
+    db_session.add_all([run_manual, run_auto])
+    db_session.commit()
+
+    # Probar en sesiones del dashboard
+    resp_sessions = client.get("/partials/execution-sessions")
+    assert resp_sessions.status_code == 200
+    assert "badge-trigger-manual" in resp_sessions.text
+    assert "badge-trigger-auto" in resp_sessions.text
+
+    # Probar en tabla de ejecuciones
+    resp_runs = client.get("/partials/runs-table")
+    assert resp_runs.status_code == 200
+    assert "badge-trigger-manual" in resp_runs.text
+    assert "badge-trigger-auto" in resp_runs.text
+
+    # Probar en modal de detalle de auto
+    resp_modal = client.get(f"/partials/runs/{run_auto.id}/modal")
+    assert resp_modal.status_code == 200
+    assert "Automática" in resp_modal.text
+    assert "badge-trigger-auto" in resp_modal.text
 
 
 

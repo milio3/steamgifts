@@ -1,0 +1,104 @@
+<!-- Componente: Chequeador Automático de Puntos (Visualizador informativo de solo lectura) -->
+<div class="autocheck-panel d-flex flex-column justify-content-between h-100">
+    <!-- Cabecera de estado principal -->
+    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom" style="border-color: #2a475e !important;">
+        <div class="d-flex align-items-center gap-2">
+            {% if checker.enabled and checker.running %}
+                <span class="autocheck-dot autocheck-dot-active"></span>
+                <span class="fw-bold small" style="color: #96b847;">Chequeo Activo</span>
+            {% elif checker.enabled and 'pausado' in (checker.status or '') %}
+                <span class="autocheck-dot autocheck-dot-paused"></span>
+                <span class="fw-bold small text-warning">Pausado (Noche España)</span>
+            {% else %}
+                <span class="autocheck-dot autocheck-dot-idle"></span>
+                <span class="fw-semibold small text-muted">Chequeo Inactivo</span>
+            {% endif %}
+        </div>
+        <div>
+            <a href="/config" class="btn btn-sm btn-link text-decoration-none p-0 text-muted" style="font-size: 0.75rem;" title="Modificar parámetros en Configuración">
+                <i class="bi bi-gear-fill me-1"></i>Configuración
+            </a>
+        </div>
+    </div>
+
+    <!-- Contenedor informativo -->
+    <div class="autocheck-content-wrapper flex-grow-1 d-flex flex-column justify-content-between">
+        
+        <!-- Fila de Métricas: Último chequeo y Puntos detectados -->
+        <div class="row g-2 mb-2">
+            <div class="col-6">
+                <div class="autocheck-box">
+                    <div class="text-muted small mb-1" style="font-size: 0.7rem; font-weight: 600;">ÚLTIMO CHEQUEO</div>
+                    <div class="fw-bold text-light font-monospace small">
+                        {% if checker.last_check %}
+                            {{ checker.last_check }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="autocheck-box">
+                    <div class="text-muted small mb-1" style="font-size: 0.7rem; font-weight: 600;">PUNTOS DETECTADOS</div>
+                    <div class="fw-bold font-monospace small {% if checker.last_points is not none and checker.last_points >= checker.autorun_min_points %}text-warning{% elif checker.last_points is not none %}text-success{% else %}text-muted{% endif %}">
+                        {% if checker.last_points is not none %}
+                            {{ checker.last_points }} P
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Próximo chequeo con jitter -->
+        <div class="autocheck-box mb-2 d-flex justify-content-between align-items-center">
+            <div>
+                <div class="text-muted small" style="font-size: 0.7rem; font-weight: 600;">PRÓXIMO CHEQUEO (JITTER)</div>
+                <div class="fw-bold font-monospace small mt-1" style="color: #66c0f4;">
+                    <i class="bi bi-clock me-1"></i>
+                    {% if checker.next_check %}
+                        {{ checker.next_check }}
+                    {% else %}
+                        <span class="text-muted">En espera</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="text-muted small text-end" style="font-size: 0.72rem;">
+                <span>{{ checker.min_interval }}-{{ checker.max_interval }} min</span>
+            </div>
+        </div>
+
+        <!-- Estado de Auto-Ejecución (Solo lectura) -->
+        <div class="p-2 rounded border mb-2 d-flex align-items-center justify-content-between" style="background-color: #17212b; border-color: #2a475e !important;">
+            <div class="d-flex align-items-center gap-2">
+                {% if checker.autorun_enabled %}
+                    <i class="bi bi-lightning-charge-fill text-warning"></i>
+                    <span class="small fw-semibold text-light" style="font-size: 0.78rem;">Auto-ejecución:</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle py-0 px-1" style="font-size: 0.7rem;">Activa</span>
+                {% else %}
+                    <i class="bi bi-slash-circle text-muted"></i>
+                    <span class="small fw-semibold text-muted" style="font-size: 0.78rem;">Auto-ejecución:</span>
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle py-0 px-1" style="font-size: 0.7rem;">Desactivada</span>
+                {% endif %}
+            </div>
+            <div>
+                <span class="text-muted font-monospace small" style="font-size: 0.75rem;">
+                    {% if checker.autorun_enabled %}
+                        ≥ <strong class="text-light">{{ checker.autorun_min_points }}</strong> P
+                    {% else %}
+                        —
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Protección Nocturna España -->
+        <div class="pt-2 border-top d-flex justify-content-between text-muted small" style="border-color: #2a475e !important; font-size: 0.72rem;">
+            <span><i class="bi bi-moon-stars me-1 text-info"></i>Pausa: {{ checker.night_start }}:00 - {{ checker.night_end }}:00 (España)</span>
+            <span>{{ checker.checks_count }} chequeos</span>
+        </div>
+
+    </div>
+</div>

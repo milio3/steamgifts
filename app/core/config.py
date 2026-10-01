@@ -50,6 +50,18 @@ ACTIVE_ENV_PATH = Path(".env.desa") if Path(".env.desa").exists() else Path(".en
 
 def update_settings_and_env(updates: dict) -> bool:
     """Actualiza los parámetros en el objeto settings y los persiste en .env.desa y .env."""
+    # Protección estricta: nunca sobrescribir STEAMGIFTS_PHPSESSID con valores ficticios de tests o vacíos
+    if "STEAMGIFTS_PHPSESSID" in updates:
+        val_cookie = str(updates["STEAMGIFTS_PHPSESSID"]).strip().strip('"').strip("'")
+        if (
+            not val_cookie
+            or "•" in val_cookie
+            or "testcookie" in val_cookie.lower()
+            or "cookie_test" in val_cookie.lower()
+            or "dummy" in val_cookie.lower()
+        ):
+            del updates["STEAMGIFTS_PHPSESSID"]
+
     if str(ACTIVE_ENV_PATH).endswith(".test"):
         target_files = [ACTIVE_ENV_PATH]
     else:

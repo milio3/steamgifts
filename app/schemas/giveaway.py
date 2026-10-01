@@ -30,6 +30,7 @@ class RunSummary(BaseModel):
     initial_points: int
     final_points: Optional[int]
     status: str
+    trigger_type: Optional[str] = "manual"
     entries: List[EntryResult]
 
 class AccountInfo(BaseModel):

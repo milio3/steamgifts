@@ -1,60 +1,182 @@
-<!-- Tabla de entradas reutilizable -->
-<div class="table-responsive">
-    <table class="table table-dark table-hover table-striped align-middle m-0 custom-table">
-        <thead class="table-dark-steam">
+<!-- Tabla de Entradas Paginada Estilo SteamGifts (Sin scrollbars) -->
+<div class="entries-table-wrapper">
+    <table class="table-sg align-middle mb-0">
+        <thead>
             <tr>
-                <th scope="col" class="ps-3">Fecha/Hora</th>
+                <th scope="col" class="ps-3" style="width: 145px;">Fecha / Hora</th>
                 <th scope="col">Juego</th>
-                <th scope="col">Categoría</th>
-                <th scope="col" class="text-center">Puntos</th>
-                <th scope="col" class="text-center">Estado</th>
-                <th scope="col" class="text-end pe-3">Sorteo</th>
+                <th scope="col" style="width: 130px;">Categoría</th>
+                <th scope="col" class="text-center" style="width: 90px;">Puntos</th>
+                <th scope="col" class="text-center" style="width: 120px;">Estado</th>
+                <th scope="col" class="text-end pe-3" style="width: 90px;">Sorteo</th>
             </tr>
         </thead>
         <tbody>
             {% for entry in entries %}
-            <tr>
-                <td class="ps-3 text-muted small">
+            <tr {% if entry.result != 'success' %}class="table-row-error"{% endif %}>
+                <!-- Fecha y Hora -->
+                <td class="ps-3 text-muted small font-monospace">
                     {{ entry.timestamp.strftime('%d/%m/%Y %H:%M') if entry.timestamp else '--' }}
                 </td>
-                <td class="fw-medium text-light text-truncate" style="max-width: 250px;" title="{{ entry.game_name }}">
-                    {{ entry.game_name }}
-                </td>
+
+                <!-- Nombre del Juego -->
                 <td>
-                    <span class="badge badge-{{ entry.category|lower }} text-capitalize px-2 py-1 rounded-pill">
+                    <span class="text-light fw-medium small" title="{{ entry.game_name }}">
+                        {{ entry.game_name }}
+                    </span>
+                    {% if entry.error_message and entry.result != 'success' %}
+                        <div class="text-danger small mt-1 font-monospace" style="font-size: 0.75rem;">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ entry.error_message }}
+                        </div>
+                    {% endif %}
+                </td>
+
+                <!-- Categoría con colores diferenciados -->
+                <td>
+                    <span class="badge badge-cat-{{ entry.category|lower|replace(' ', '_') }} px-2 py-1 small" style="font-size: 0.75rem;">
                         {{ entry.category }}
                     </span>
                 </td>
-                <td class="text-center">
-                    <span class="text-warning fw-bold">{{ entry.points_spent }}P</span>
+
+                <!-- Puntos (Tipografía discreta, sin amarillo chillón) -->
+                <td class="text-center text-muted small font-monospace">
+                    {{ entry.points_spent }}P
                 </td>
+
+                <!-- Estado -->
                 <td class="text-center">
                     {% if entry.result == 'success' %}
-                        <span class="badge badge-status-success px-2 py-1">
-                            <i class="bi bi-check-circle me-1"></i> Éxito
+                        <span class="badge badge-sg-status-success rounded px-2 py-1 small">
+                            <i class="bi bi-check2 me-1"></i>Éxito
                         </span>
                     {% else %}
-                        <span class="badge badge-status-danger px-2 py-1" 
-                              title="{{ entry.error_message or '' }}">
-                            <i class="bi bi-x-circle me-1"></i> Error
+                        <span class="badge badge-sg-status-danger rounded px-2 py-1 small" title="{{ entry.error_message or 'Error en la entrada' }}">
+                            <i class="bi bi-x-circle me-1"></i>Error
                         </span>
                     {% endif %}
                 </td>
+
+                <!-- Enlace al Sorteo -->
                 <td class="text-end pe-3">
                     <a href="https://www.steamgifts.com/giveaway/{{ entry.giveaway_code }}/" 
-                       target="_blank" class="text-decoration-none text-info font-monospace small fw-semibold">
-                        {{ entry.giveaway_code }} <i class="bi bi-box-arrow-up-right ms-1"></i>
+                       target="_blank" 
+                       rel="noopener noreferrer" 
+                       class="text-decoration-none font-monospace small" 
+                       style="color: #66c0f4;" 
+                       title="Ver sorteo en SteamGifts">
+                        {{ entry.giveaway_code }} <i class="bi bi-box-arrow-up-right small ms-1"></i>
                     </a>
                 </td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="6" class="text-center py-4 text-muted">
-                    <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
-                    No hay entradas registradas todavía.
+                <td colspan="6" class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox fs-3 d-block mb-2 opacity-50"></i>
+                    {% if search or category %}
+                        No se encontraron sorteos con los filtros actuales.
+                    {% else %}
+                        No hay entradas registradas en el historial todavía.
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <!-- Pie con Paginación Dinámica SteamGifts -->
+    {% if total_count > 0 %}
+    <div class="d-flex flex-wrap justify-content-between align-items-center p-3 border-top" style="border-color: #2a475e !important; background-color: #19222e;">
+        <!-- Indicador de Registros -->
+        <div class="text-muted small">
+            Mostrando <span class="text-light fw-semibold">{{ start_idx }}</span> a <span class="text-light fw-semibold">{{ end_idx }}</span> de <span class="text-light fw-semibold">{{ total_count }}</span> entradas
+        </div>
+
+        <!-- Botones de Paginación -->
+        {% if total_pages > 1 %}
+        <nav aria-label="Navegación de entradas">
+            <ul class="pagination-sg mb-0">
+                <!-- Botón Anterior -->
+                <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                    {% if page > 1 %}
+                    <button class="page-link"
+                            hx-get="/partials/entries-table?page={{ page - 1 }}&search={{ search }}&category={{ category }}"
+                            hx-target="#entries-table-container"
+                            hx-swap="innerHTML"
+                            title="Página anterior">
+                        &laquo; Anterior
+                    </button>
+                    {% else %}
+                    <span class="page-link">&laquo; Anterior</span>
+                    {% endif %}
+                </li>
+
+                <!-- Primera página si estamos lejos -->
+                {% if page_numbers[0] > 1 %}
+                <li class="page-item">
+                    <button class="page-link"
+                            hx-get="/partials/entries-table?page=1&search={{ search }}&category={{ category }}"
+                            hx-target="#entries-table-container"
+                            hx-swap="innerHTML">
+                        1
+                    </button>
+                </li>
+                {% if page_numbers[0] > 2 %}
+                <li class="page-item disabled">
+                    <span class="page-link">&hellip;</span>
+                </li>
+                {% endif %}
+                {% endif %}
+
+                <!-- Páginas Numéricas -->
+                {% for p in page_numbers %}
+                <li class="page-item {% if p == page %}active{% endif %}">
+                    {% if p == page %}
+                    <span class="page-link">{{ p }}</span>
+                    {% else %}
+                    <button class="page-link"
+                            hx-get="/partials/entries-table?page={{ p }}&search={{ search }}&category={{ category }}"
+                            hx-target="#entries-table-container"
+                            hx-swap="innerHTML">
+                        {{ p }}
+                    </button>
+                    {% endif %}
+                </li>
+                {% endfor %}
+
+                <!-- Última página si estamos lejos -->
+                {% if page_numbers[-1] < total_pages %}
+                {% if page_numbers[-1] < total_pages - 1 %}
+                <li class="page-item disabled">
+                    <span class="page-link">&hellip;</span>
+                </li>
+                {% endif %}
+                <li class="page-item">
+                    <button class="page-link"
+                            hx-get="/partials/entries-table?page={{ total_pages }}&search={{ search }}&category={{ category }}"
+                            hx-target="#entries-table-container"
+                            hx-swap="innerHTML">
+                        {{ total_pages }}
+                    </button>
+                </li>
+                {% endif %}
+
+                <!-- Botón Siguiente -->
+                <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                    {% if page < total_pages %}
+                    <button class="page-link"
+                            hx-get="/partials/entries-table?page={{ page + 1 }}&search={{ search }}&category={{ category }}"
+                            hx-target="#entries-table-container"
+                            hx-swap="innerHTML"
+                            title="Página siguiente">
+                        Siguiente &raquo;
+                    </button>
+                    {% else %}
+                    <span class="page-link">Siguiente &raquo;</span>
+                    {% endif %}
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>

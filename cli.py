@@ -240,6 +240,9 @@ def ejecutar_bot(categories=None, max_entries=None):
     if max_entries:
         settings.MAX_ENTRIES_PER_RUN = max_entries
 
+    if categories:
+        categories = ["Multiple Copies" if c == "multiple_copies" else c for c in categories]
+
     db = SessionLocal()
     try:
         client = SteamGiftsClient(

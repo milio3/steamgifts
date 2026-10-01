@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}SteamGifts Bot{% endblock %} | SteamGifts Bot</title>
+    <title>{% block title %}SteamGifts Bot{% endblock %} | SteamGifts</title>
     
     <!-- Bootstrap 5.3 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -16,87 +16,104 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
 
-    <!-- Custom CSS -->
+    <!-- Custom CSS SteamGifts Dark -->
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
-<body class="bg-dark-steam text-light">
+<body>
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark-nav sticky-top shadow-sm border-bottom border-secondary">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="/">
-                <svg class="tailwind-svg-icon text-primary" style="width: 22px; height: 22px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 0 1-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 0 0 6.16-12.12A14.98 14.98 0 0 0 9.631 8.41m5.96 5.96a14.926 14.926 0 0 1-5.841 2.58m-.119-8.54a6 6 0 0 0-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 0 0-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 0 1-2.448-2.448 14.9 14.9 0 0 1 .06-.312m-2.24 2.39a4.493 4.493 0 0 0-1.757 4.306 4.493 4.493 0 0 0 4.306-1.758M16.5 9a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" />
-                </svg>
-                <span>SteamGifts Bot</span>
+    <!-- Cabecera Superior: Logo + Enlaces Centrados + Cuenta & Botón Ejecución -->
+    <nav class="navbar navbar-expand-lg navbar-steam sticky-top">
+        <div class="sg-container d-flex align-items-center justify-content-between gap-3">
+            <!-- Logo a la izquierda -->
+            <a class="navbar-brand m-0 text-nowrap" href="/dashboard">
+                <i class="bi bi-gift-fill text-info fs-5"></i>
+                <span>SteamGifts</span>
+                <span class="logo-badge">Bot</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            
+            <button class="navbar-toggler border-0 p-1 text-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
                 <span class="navbar-toggler-icon"></span>
             </button>
             
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+            <div class="collapse navbar-collapse justify-content-between align-items-center" id="navbarContent">
+                <!-- Enlaces centrados en la cabecera -->
+                <ul class="navbar-nav mx-auto align-items-center gap-1 my-2 my-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link {% if 'dashboard' in request.url.path %}active{% endif %}" href="/dashboard">
-                            <i class="bi bi-speedometer2"></i> Dashboard
+                        <a class="nav-link {% if 'dashboard' in request.url.path or request.url.path == '/' %}active{% endif %}" href="/dashboard">
+                            <i class="bi bi-speedometer2 me-1"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if 'entries' in request.url.path %}active{% endif %}" href="/entries">
-                            <i class="bi bi-list-ul"></i> Historial
+                            <i class="bi bi-ticket-perforated me-1"></i> Historial
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if 'runs' in request.url.path %}active{% endif %}" href="/runs">
-                            <i class="bi bi-clock-history"></i> Ejecuciones
+                            <i class="bi bi-clock-history me-1"></i> Ejecuciones
                         </a>
                     </li>
                     <li class="nav-item">
-                        <button type="button" 
-                                class="nav-link btn btn-link text-decoration-none {% if 'config' in request.url.path %}active{% endif %}" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#configModal" 
-                                hx-get="/partials/config-modal" 
-                                hx-target="#configModalContent" 
-                                hx-trigger="click">
-                            <i class="bi bi-gear"></i> Configuración
-                        </button>
+                        <a class="nav-link {% if 'config' in request.url.path %}active{% endif %}" href="/config">
+                            <i class="bi bi-gear me-1"></i> Configuración
+                        </a>
                     </li>
                 </ul>
+
+                <!-- Espacio a la derecha: Recuadro de Cuenta y Botón Iniciar Ejecución -->
+                <div class="d-flex align-items-center gap-2 mt-2 mt-lg-0 ms-lg-2">
+                    <!-- Recuadro Cuenta: Carga automática al iniciar la web -->
+                    <div id="account-pill-container"
+                         hx-get="/partials/account-points"
+                         hx-trigger="load, refreshAccount from:body"
+                         hx-swap="innerHTML">
+                        <div class="btn-sg-account-box text-muted">
+                            <i class="bi bi-person-fill text-secondary me-2 fs-6"></i>
+                            <span class="small">Cargando...</span>
+                        </div>
+                    </div>
+
+                    <!-- Botón Iniciar Ejecución Verde Steam -->
+                    <form id="run-bot-form" hx-post="/partials/run-bot" hx-target="#run-feedback" hx-swap="innerHTML" class="m-0">
+                        <button type="submit" 
+                                class="btn btn-sg-enter" 
+                                id="btn-run-bot"
+                                title="Iniciar ejecución del bot con las categorías configuradas">
+                            <i class="bi bi-play-fill fs-5" style="line-height: 1;"></i>
+                            <span>Iniciar Ejecución</span>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="container my-4">
+    <!-- Feedback global de ejecución -->
+    <div class="sg-container mt-2">
+        <div id="run-feedback"></div>
+    </div>
+
+    <!-- Main Content en Contenedor Amigable Centrado (1240px) -->
+    <main class="sg-container my-3">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Modal de Configuración -->
-    <div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content bg-dark-steam border-secondary text-light">
-                <div class="modal-header border-secondary py-3">
-                    <h5 class="modal-title d-flex align-items-center gap-2" id="configModalLabel">
-                        <i class="bi bi-sliders text-primary"></i> Configuración del Bot
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body p-4" id="configModalContent">
-                    <div class="d-flex justify-content-center my-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Cargando configuración...</span>
-                        </div>
-                    </div>
+    <!-- Modal Global: Detalle de Ejecución -->
+    <div class="modal fade" id="runDetailModal" tabindex="-1" aria-labelledby="runDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content modal-content-sg border-0" id="runDetailModalBody">
+                <div class="p-5 text-center text-muted">
+                    <div class="spinner-border text-info spinner-border-sm mb-2" role="status"></div>
+                    <div>Cargando detalle de la sesión...</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="footer mt-auto py-3 bg-dark-nav text-muted text-center border-top border-secondary">
-        <div class="container">
-            <small>🎮 SteamGifts Auto-Enter Bot | v1.0.0</small>
+    <!-- Footer Estilo SteamGifts -->
+    <footer class="footer mt-auto py-3 text-muted text-center" style="border-top: 1px solid #2a475e; background: #171a21;">
+        <div class="sg-container">
+            <small style="color: #6a7d8e;">SteamGifts Auto-Enter Bot &bull; Basado en SteamGifts.com</small>
         </div>
     </footer>
 
