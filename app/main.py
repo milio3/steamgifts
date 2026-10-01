@@ -8,6 +8,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from sqlalchemy import text
+
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.logging_buffer import console_handler
@@ -25,6 +27,22 @@ logger = logging.getLogger(__name__)
 is_bot_running = False
 
 
+def _ejecutar_migraciones_bd():
+    """Aplica migraciones automáticas si la BD proviene de una versión anterior."""
+    try:
+        with engine.connect() as conn:
+            # Comprobar si la tabla run_logs existe y tiene la columna trigger_type
+            result = conn.execute(text("PRAGMA table_info(run_logs);")).fetchall()
+            if result:
+                columnas = [row[1] for row in result]
+                if "trigger_type" not in columnas:
+                    conn.execute(text("ALTER TABLE run_logs ADD COLUMN trigger_type VARCHAR(20) DEFAULT 'manual';"))
+                    conn.commit()
+                    logger.info("✅ Migración aplicada con éxito: columna 'trigger_type' añadida a 'run_logs'")
+    except Exception as e:
+        logger.warning(f"Aviso al comprobar migraciones de BD: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Ciclo de vida de la aplicación: crea tablas al arrancar e inicia el autochecker si procede."""
@@ -32,6 +50,8 @@ async def lifespan(app: FastAPI):
     Path("data").mkdir(exist_ok=True)
     # Crear tablas en BD al arrancar
     Base.metadata.create_all(bind=engine)
+    # Aplicar migraciones automáticas en BD preexistentes
+    _ejecutar_migraciones_bd()
     logger.info("Aplicación iniciada - Tablas de BD verificadas")
 
     # Arrancar el chequeador automático de puntos si estaba habilitado
