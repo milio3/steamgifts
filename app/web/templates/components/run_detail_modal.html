@@ -1,0 +1,166 @@
+<!-- Contenido del Modal: Detalle de Ejecución #{{ run.id }} -->
+<div class="modal-header py-3 px-4" style="background-color: #19222e; border-bottom: 1px solid #2a475e;">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-info-circle text-info fs-5"></i>
+        <h5 class="modal-title fw-bold text-white fs-6 m-0">
+            Detalle de Ejecución <span style="color: #66c0f4;">#{{ run.id }}</span>
+        </h5>
+        {% if run.trigger_type == 'auto' %}
+            <span class="badge-trigger-auto ms-1" title="Ejecución automática disparada por autochecker"><i class="bi bi-robot me-1"></i>Automática</span>
+        {% else %}
+            <span class="badge-trigger-manual ms-1" title="Ejecución manual"><i class="bi bi-person me-1"></i>Manual</span>
+        {% endif %}
+        <span class="text-muted small ms-2 font-monospace">
+            {{ run.started_at.strftime('%d/%m/%Y %H:%M') if run.started_at else '' }}
+        </span>
+    </div>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+</div>
+
+<div class="modal-body p-4" style="background-color: #1b2838;">
+    <!-- Tarjetas de Resumen Superior -->
+    <div class="row g-3 mb-4">
+        <!-- Estado -->
+        <div class="col-sm-6 col-md-3">
+            <div class="stat-card-sg">
+                <div class="stat-label-sg mb-1">Estado</div>
+                <div class="mt-1">
+                    {% if run.status == 'completed' %}
+                        <span class="badge badge-sg-status-success rounded px-2 py-1 small">
+                            <i class="bi bi-check2 me-1"></i>Completado
+                        </span>
+                    {% elif run.status == 'running' %}
+                        <span class="badge badge-sg-status-warning rounded px-2 py-1 small">
+                            <span class="spinner-border spinner-border-sm me-1" role="status" style="width: 8px; height: 8px;"></span>En ejecución
+                        </span>
+                    {% else %}
+                        <span class="badge badge-sg-status-danger rounded px-2 py-1 small" title="{{ run.error_message or '' }}">
+                            <i class="bi bi-x-circle me-1"></i>Error
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Entradas -->
+        <div class="col-sm-6 col-md-3">
+            <div class="stat-card-sg">
+                <div class="stat-label-sg mb-1">Entradas</div>
+                <div class="stat-value-sg">
+                    {{ run.total_entries }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Puntos Gastados -->
+        <div class="col-sm-6 col-md-3">
+            <div class="stat-card-sg">
+                <div class="stat-label-sg mb-1">Puntos Usados</div>
+                <div class="stat-value-sg">
+                    {{ run.total_points_spent }} <span class="fs-6 fw-normal text-muted">P</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Balance de Puntos -->
+        <div class="col-sm-6 col-md-3">
+            <div class="stat-card-sg">
+                <div class="stat-label-sg mb-1">Puntos Restantes</div>
+                <div class="stat-value-sg fs-6 mt-1 text-light">
+                    {{ run.final_points if run.final_points is not none else '--' }}P
+                    {% if run.initial_points is not none %}
+                    <span class="text-muted fw-normal small">({{ run.initial_points }}P &rarr;)</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if run.error_message %}
+    <div class="alert alert-danger mb-4 py-2 px-3 small" style="background-color: rgba(217, 83, 79, 0.15); border: 1px solid #d9534f; color: #f87171;" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong>Error:</strong> {{ run.error_message }}
+    </div>
+    {% endif %}
+
+    <!-- Tabla de Sorteos Procesados en la Ejecución -->
+    <div class="card card-sg">
+        <div class="card-header card-header-sg py-2 px-3 d-flex justify-content-between align-items-center">
+            <span class="small fw-bold text-white">Sorteos de esta sesión ({{ entries|length }})</span>
+        </div>
+        <div class="card-body p-0">
+            {% if entries %}
+            <div class="table-responsive">
+                <table class="table-sg align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="ps-3" style="width: 130px;">Fecha / Hora</th>
+                            <th scope="col">Juego</th>
+                            <th scope="col" style="width: 140px;">Categoría</th>
+                            <th scope="col" class="text-center" style="width: 80px;">Puntos</th>
+                            <th scope="col" class="text-center" style="width: 100px;">Estado</th>
+                            <th scope="col" class="text-end pe-3" style="width: 90px;">Sorteo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in entries %}
+                        <tr {% if entry.result != 'success' %}class="table-row-error"{% endif %}>
+                            <td class="ps-3 text-muted small font-monospace">
+                                {{ entry.timestamp.strftime('%d/%m %H:%M') if entry.timestamp else '--' }}
+                            </td>
+                            <td>
+                                <span class="text-light fw-medium small" title="{{ entry.game_name }}">
+                                    {{ entry.game_name }}
+                                </span>
+                                {% if entry.error_message and entry.result != 'success' %}
+                                    <div class="text-danger small mt-1 font-monospace" style="font-size: 0.72rem;">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ entry.error_message }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge badge-cat-{{ entry.category|lower|replace(' ', '_') }} px-2 py-1 small">
+                                    {{ entry.category }}
+                                </span>
+                            </td>
+                            <td class="text-center text-muted small font-monospace">
+                                {{ entry.points_spent }}P
+                            </td>
+                            <td class="text-center">
+                                {% if entry.result == 'success' %}
+                                    <span class="badge badge-sg-status-success rounded px-2 py-1 small">
+                                        <i class="bi bi-check2"></i> Éxito
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-sg-status-danger rounded px-2 py-1 small">
+                                        <i class="bi bi-x-circle"></i> Error
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-3">
+                                <a href="https://www.steamgifts.com/giveaway/{{ entry.giveaway_code }}/" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer" 
+                                   class="text-decoration-none font-monospace small" 
+                                   style="color: #66c0f4;">
+                                    {{ entry.giveaway_code }} <i class="bi bi-box-arrow-up-right small ms-1"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted small">
+                <i class="bi bi-inbox fs-4 d-block mb-1 opacity-50"></i>
+                No se registraron entradas en esta sesión.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="modal-footer py-2 px-4" style="background-color: #19222e; border-top: 1px solid #2a475e;">
+    <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-bs-dismiss="modal">Cerrar</button>
+</div>

@@ -3,159 +3,70 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="m-0"><i class="bi bi-speedometer2 text-primary"></i> Panel de Control</h2>
-    <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2 py-1 px-3 text-muted hover-light shadow-sm"
-            hx-get="/partials/stats"
-            hx-target="#stats-container"
-            hx-swap="innerHTML"
-            hx-indicator="#refresh-spinner"
-            title="Actualizar métricas">
-        <span id="refresh-spinner" class="spinner-border spinner-border-sm htmx-indicator" role="status"></span>
-        <i class="bi bi-arrow-clockwise"></i>
-        <span>Actualizar</span>
-    </button>
+<!-- Título del Panel de Control -->
+<div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom" style="border-color: #2a475e !important;">
+    <h2 class="h4 fw-bold text-white mb-0 d-flex align-items-center gap-2">
+        <i class="bi bi-speedometer2 text-info"></i> Panel de Control
+    </h2>
 </div>
 
-<!-- Tarjetas de Métricas (Precargadas de forma instantánea) -->
-<div id="stats-container">
+<!-- Fila 1: Métricas Principales -->
+<div id="stats-container" class="mb-3">
     {% include "components/stats_cards.html" %}
 </div>
 
-<div class="row mt-4 align-items-stretch">
-    <!-- Panel de Lanzamiento de Ejecución -->
-    <div class="col-lg-4 mb-4 d-flex flex-column">
-        <div class="card w-100 launcher-panel border-secondary bg-dark-steam-light shadow-sm d-flex flex-column justify-content-between">
-            <div class="card-header border-secondary bg-transparent py-3">
-                <h5 class="card-title m-0 d-flex align-items-center gap-2">
-                    <svg class="tailwind-svg-icon text-success" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-                    </svg>
-                    <span>Lanzador de Bot</span>
-                </h5>
-            </div>
-            <div class="card-body d-flex flex-column justify-content-between p-4">
-                <div>
-                    <!-- Bloque de Puntos Disponibles -->
-                    <div id="account-points-container" class="mb-4">
-                        {% if known_points is not none %}
-                            <div class="p-3 rounded bg-dark border {% if known_points >= threshold %}border-warning{% else %}border-secondary{% endif %}">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="text-muted small text-uppercase fw-bold">Puntos Disponibles</span>
-                                    <button class="btn btn-sm btn-link text-muted p-0 text-decoration-none" 
-                                            hx-get="/partials/account-points" 
-                                            hx-target="#account-points-container" 
-                                            hx-swap="innerHTML"
-                                            title="Consultar puntos en vivo en SteamGifts">
-                                        <i class="bi bi-arrow-clockwise"></i>
-                                    </button>
-                                </div>
-                                <div class="d-flex align-items-baseline gap-2">
-                                    <span class="fs-3 fw-bold {% if known_points >= threshold %}text-warning{% else %}text-light{% endif %}">
-                                        {{ known_points }} P
-                                    </span>
-                                    <span class="text-muted small">/ {{ threshold }} P máx</span>
-                                    {% if known_points >= threshold %}
-                                    <span class="badge bg-warning-subtle text-warning border border-warning small ms-auto">
-                                        <i class="bi bi-bell-fill me-1"></i> Límite alcanzado
-                                    </span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        {% else %}
-                            <div class="p-3 rounded bg-dark border border-secondary d-flex align-items-center justify-content-between">
-                                <span class="text-muted small">Puntos disponibles no consultados</span>
-                                <button class="btn btn-sm btn-outline-secondary py-1 px-2 small"
-                                        hx-get="/partials/account-points"
-                                        hx-target="#account-points-container"
-                                        hx-swap="innerHTML">
-                                    <i class="bi bi-arrow-clockwise me-1"></i> Consultar
-                                </button>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div>
-                    <form id="run-bot-form" hx-post="/partials/run-bot" hx-target="#run-feedback" hx-swap="innerHTML">
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg btn-run-gradient shadow fw-bold py-3 d-flex align-items-center justify-content-center gap-2" id="btn-run-bot">
-                                <svg class="tailwind-svg-icon" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-                                    <path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" />
-                                </svg>
-                                <span>Iniciar Ejecución</span>
-                            </button>
-                        </div>
-                        <div id="run-feedback" class="mt-3"></div>
-                    </form>
-
-                    <div class="mt-3 pt-3 border-top border-secondary text-center">
-                        <a href="#" class="text-info text-decoration-none small d-inline-flex align-items-center gap-1"
-                           data-bs-toggle="modal" 
-                           data-bs-target="#configModal" 
-                           hx-get="/partials/config-modal" 
-                           hx-target="#configModalContent">
-                            <i class="bi bi-gear"></i> Modificar parámetros u orden de categorías
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Consola de Ejecución en Vivo -->
-    <div class="col-lg-8 mb-4 d-flex flex-column">
-        <div class="terminal-window w-100 d-flex flex-column shadow">
+<!-- Fila 2: Consola de Ejecución en Vivo (Ancho Completo) -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="terminal-window" style="min-height: 280px;">
             <div class="terminal-header d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">
                     <span class="terminal-dot terminal-dot-red"></span>
                     <span class="terminal-dot terminal-dot-yellow"></span>
                     <span class="terminal-dot terminal-dot-green"></span>
-                    <span class="text-muted small ms-2 font-monospace">consola@steamgifts-bot:~$</span>
+                    <span class="text-muted small ms-2 font-monospace" style="font-size: 0.78rem;">
+                        consola@steamgifts-bot:~$
+                    </span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <button type="button" 
-                            class="btn btn-sm btn-outline-secondary py-0 px-2 text-muted" 
+                            class="btn btn-sm py-0 px-2 text-muted rounded"
+                            style="border: 1px solid #2a475e; background: #17212b; font-size: 0.75rem;" 
                             hx-post="/partials/clear-console" 
                             hx-target="#console-logs" 
                             hx-swap="innerHTML"
-                            title="Limpiar registros de consola">
-                        <i class="bi bi-trash small"></i>
+                            title="Limpiar visor de consola">
+                        <i class="bi bi-trash3 me-1"></i>Limpiar
                     </button>
                 </div>
             </div>
-            <div id="console-body" class="terminal-body flex-grow-1">
-                <div id="console-logs" hx-get="/partials/console-logs" hx-trigger="load, every 1.5s" hx-swap="innerHTML">
-                    <div class="console-line text-muted fst-italic">consola@steamgifts-bot:~$ Cargando registros...</div>
+            <div id="console-body" class="terminal-body" style="min-height: 240px; max-height: 380px;">
+                <div id="console-logs" 
+                     hx-get="/partials/console-logs" 
+                     hx-trigger="load, every 1.5s" 
+                     hx-swap="innerHTML">
+                    <div class="console-line text-muted fst-italic">consola@steamgifts-bot:~$ Conectando al monitor del sistema...</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Sesiones de Ejecución (En formato compacto de una línea, máx 5) -->
-<div class="row mt-2">
+<!-- Fila 3: Sesiones de Ejecución (Actualización automática continua) -->
+<div class="row">
     <div class="col-12">
-        <div class="card border-secondary bg-dark-steam-light shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center border-secondary bg-transparent py-3">
+        <div class="card card-sg">
+            <div class="card-header card-header-sg d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">
-                    <svg class="tailwind-svg-icon text-warning" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                    </svg>
-                    <h5 class="card-title m-0">Sesiones de Ejecución (Últimas 5)</h5>
-                </div>
-                <div class="d-flex align-items-center gap-3">
-                    <button class="btn btn-sm btn-outline-secondary py-1 px-2 text-light" 
-                            hx-get="/partials/execution-sessions" 
-                            hx-target="#sessions-container" 
-                            hx-swap="innerHTML"
-                            title="Actualizar sesiones">
-                        <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
-                    </button>
+                    <i class="bi bi-journal-text text-warning"></i>
+                    <span>Sesiones de Ejecución (Últimas 5)</span>
                 </div>
             </div>
             <div class="card-body p-0">
-                <div id="sessions-container" hx-get="/partials/execution-sessions" hx-trigger="refreshSessions from:body" hx-swap="innerHTML">
+                <div id="sessions-container" 
+                     hx-get="/partials/execution-sessions" 
+                     hx-trigger="load, every 5s, refreshSessions from:body" 
+                     hx-swap="innerHTML">
                     {% include "components/execution_sessions.html" %}
                 </div>
             </div>

@@ -27,13 +27,22 @@ is_bot_running = False
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Ciclo de vida de la aplicación: crea tablas al arrancar."""
+    """Ciclo de vida de la aplicación: crea tablas al arrancar e inicia el autochecker si procede."""
     # Crear directorio de datos si no existe
     Path("data").mkdir(exist_ok=True)
     # Crear tablas en BD al arrancar
     Base.metadata.create_all(bind=engine)
     logger.info("Aplicación iniciada - Tablas de BD verificadas")
+
+    # Arrancar el chequeador automático de puntos si estaba habilitado
+    from app.services.points_checker import points_checker
+    points_checker.auto_start_if_enabled()
+
     yield
+
+    # Detener el chequeador al apagar la app
+    if points_checker.is_running:
+        points_checker.stop()
     logger.info("Aplicación detenida")
 
 

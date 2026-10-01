@@ -35,7 +35,7 @@ AVAILABLE_CATEGORIES: Dict[str, dict] = {
         "icon": "bi-people-fill",
         "svg_icon": '<svg class="tailwind-svg-icon" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M4.5 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM14.25 8.625a3.375 3.375 0 1 1 6.75 0 3.375 3.375 0 0 1-6.75 0ZM1.5 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.633 13.067 13.067 0 0 1-6.761 1.87 13.067 13.067 0 0 1-6.76-1.87.75.75 0 0 1-.364-.633l-.001-.122ZM17.25 19.128l-.001.144a2.25 2.25 0 0 1-.233.96 10.088 10.088 0 0 0 5.06-1.604.75.75 0 0 0 .424-.658v-.108a5.625 5.625 0 0 0-5.25-5.612v6.878Z" /></svg>',
     },
-    "multiple_copies": {
+    "Multiple Copies": {
         "name": "Multiple Copies",
         "label": "Multiple Copies",
         "url": "/giveaways/search?copy_min=2",
@@ -69,12 +69,15 @@ AVAILABLE_CATEGORIES: Dict[str, dict] = {
     },
 }
 
+# Alias para compatibilidad con CLI y llamadas legacy
+AVAILABLE_CATEGORIES["multiple_copies"] = AVAILABLE_CATEGORIES["Multiple Copies"]
+
 # Orden inicial por defecto especificado por el usuario (1 a 7)
 DEFAULT_CATEGORY_ORDER: List[str] = [
     "wishlist",
     "dlc",
     "group",
-    "multiple_copies",
+    "Multiple Copies",
     "recommended",
     "new",
     "all",
@@ -87,8 +90,12 @@ def load_categories_config() -> Tuple[List[str], Set[str]]:
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                order = data.get("categories_order", [])
-                enabled = set(data.get("enabled_categories", []))
+                raw_order = data.get("categories_order", [])
+                raw_enabled = data.get("enabled_categories", [])
+
+                # Normalizar si viniese 'multiple_copies' antiguo
+                order = ["Multiple Copies" if c == "multiple_copies" else c for c in raw_order]
+                enabled = set("Multiple Copies" if c == "multiple_copies" else c for c in raw_enabled)
 
                 valid_order = [c for c in order if c in AVAILABLE_CATEGORIES]
                 for c in DEFAULT_CATEGORY_ORDER:

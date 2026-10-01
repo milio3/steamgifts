@@ -1,48 +1,19 @@
-<!-- Componente: Consulta de Puntos Disponibles en SteamGifts -->
+<!-- Recuadro de Cuenta y Puntos (Mismo tamaño que botón Iniciar Ejecución, sin botón actualizar ni nivel) -->
 {% if not configured %}
-    <div class="d-flex align-items-center justify-content-between p-2 rounded bg-dark border border-secondary">
-        <span class="text-muted small"><i class="bi bi-info-circle me-1"></i> Cookie PHPSESSID no configurada</span>
-        <a href="/config" class="btn btn-sm btn-outline-info py-0 px-2 small">Configurar</a>
-    </div>
+    <a href="/config" class="btn-sg-account-box text-decoration-none" title="Configurar Cookie PHPSESSID">
+        <i class="bi bi-person-fill text-secondary me-2"></i>
+        <span class="small text-warning">Configurar</span>
+    </a>
 {% elif not valid %}
-    <div class="d-flex align-items-center justify-content-between p-2 rounded bg-dark border border-danger-subtle">
-        <span class="text-danger small"><i class="bi bi-exclamation-triangle me-1"></i> {{ error }}</span>
-        <button class="btn btn-sm btn-outline-secondary py-0 px-2 small" 
-                hx-get="/partials/account-points" 
-                hx-target="#account-points-container" 
-                hx-swap="innerHTML"
-                title="Reintentar comprobación">
-            <i class="bi bi-arrow-clockwise"></i>
-        </button>
+    <div class="btn-sg-account-box" title="{{ error or 'Sesión no válida o expirada' }}">
+        <i class="bi bi-person-fill text-secondary me-2"></i>
+        <span class="small text-danger">Sin conexión</span>
     </div>
 {% else %}
-    <div class="p-3 rounded bg-dark border {% if limit_reached %}border-warning{% else %}border-secondary{% endif %}">
-        <div class="mb-2">
-            <span class="text-muted small text-uppercase fw-bold">Puntos Disponibles</span>
-        </div>
-        
-        <div class="d-flex align-items-baseline gap-2">
-            <span class="fs-3 fw-bold {% if limit_reached %}text-warning{% else %}text-light{% endif %}">
-                {{ points }} P
-            </span>
-            <span class="text-muted small">
-                / {{ threshold }} P máx
-            </span>
-            {% if limit_reached %}
-                <span class="badge bg-warning-subtle text-warning border border-warning small ms-auto">
-                    <i class="bi bi-bell-fill me-1"></i> Límite alcanzado
-                </span>
-            {% else %}
-                <span class="badge bg-secondary-subtle text-info border border-secondary small ms-auto">
-                    {{ username }} (Niv. {{ level }})
-                </span>
-            {% endif %}
-        </div>
-
-        {% if limit_reached %}
-        <div class="mt-2 text-warning small" style="font-size: 0.78rem;">
-            <i class="bi bi-exclamation-circle me-1"></i> Se ha generado alerta para que aproveches tus puntos y no dejes de acumular.
-        </div>
-        {% endif %}
+    <div class="btn-sg-account-box" title="Cuenta conectada a SteamGifts">
+        <!-- Icono de usuario azul cuando hay datos -->
+        <i class="bi bi-person-fill text-info me-2 fs-6"></i>
+        <span class="fw-bold text-white small me-1">{{ username }}</span>
+        <span class="small font-monospace" style="color: #96b847; font-weight: 600;">{{ points }}p</span>
     </div>
 {% endif %}

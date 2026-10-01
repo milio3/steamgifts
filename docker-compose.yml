@@ -1,0 +1,11 @@
+services:
+  steamgifts-bot:
+    build: .
+    container_name: steamgifts-bot
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8086}:80"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env

@@ -1,60 +1,192 @@
-<!-- Tabla de ejecuciones del bot -->
-<div class="table-responsive">
-    <table class="table table-dark table-hover table-striped align-middle m-0 custom-table">
-        <thead class="table-dark-steam">
+<!-- Tabla de Ejecuciones Paginada (Mismo formato y coherencia que Historial) -->
+<div class="runs-table-wrapper">
+    <table class="table-sg align-middle mb-0">
+        <thead>
             <tr>
-                <th scope="col" class="ps-3">ID</th>
-                <th scope="col">Inicio</th>
-                <th scope="col">Fin</th>
-                <th scope="col" class="text-center">Estado</th>
-                <th scope="col" class="text-center">Entradas</th>
-                <th scope="col" class="text-center">Puntos Gastados</th>
-                <th scope="col" class="text-center">Puntos Finales</th>
-                <th scope="col" class="text-end pe-3">Acciones</th>
+                <th scope="col" class="ps-3" style="width: 140px;">Sesión</th>
+                <th scope="col" style="width: 170px;">Inicio</th>
+                <th scope="col" style="width: 170px;">Fin</th>
+                <th scope="col" class="text-center" style="width: 120px;">Estado</th>
+                <th scope="col" class="text-center" style="width: 110px;">Entradas</th>
+                <th scope="col" class="text-center" style="width: 130px;">Puntos Gastados</th>
+                <th scope="col" class="text-center" style="width: 130px;">Puntos Restantes</th>
+                <th scope="col" class="text-end pe-3" style="width: 110px;"></th>
             </tr>
         </thead>
         <tbody>
             {% for run in runs %}
-            <tr>
-                <td class="ps-3 fw-bold text-light">#{{ run.id }}</td>
-                <td class="text-muted small">
+            <tr {% if run.status == 'error' %}class="table-row-error"{% endif %}>
+                <!-- ID de Sesión y Tipo -->
+                <td class="ps-3 text-nowrap">
+                    <span class="fw-bold font-monospace small me-1" style="color: #66c0f4;">#{{ run.id }}</span>
+                    {% if run.trigger_type == 'auto' %}
+                        <span class="badge-trigger-auto" title="Ejecución automática por autochecker"><i class="bi bi-robot me-1"></i>Auto</span>
+                    {% else %}
+                        <span class="badge-trigger-manual" title="Ejecución manual"><i class="bi bi-person me-1"></i>Manual</span>
+                    {% endif %}
+                </td>
+
+                <!-- Inicio -->
+                <td class="text-muted small font-monospace">
                     {{ run.started_at.strftime('%d/%m/%Y %H:%M:%S') if run.started_at else '--' }}
                 </td>
-                <td class="text-muted small">
+
+                <!-- Fin -->
+                <td class="text-muted small font-monospace">
                     {{ run.finished_at.strftime('%d/%m/%Y %H:%M:%S') if run.finished_at else 'En curso...' }}
                 </td>
+
+                <!-- Estado -->
                 <td class="text-center">
                     {% if run.status == 'completed' %}
-                        <span class="badge badge-status-success px-2 py-1">
-                            <i class="bi bi-check-circle-fill me-1"></i> Completado
+                        <span class="badge badge-sg-status-success rounded px-2 py-1 small">
+                            <i class="bi bi-check2 me-1"></i>Completado
                         </span>
                     {% elif run.status == 'running' %}
-                        <span class="badge badge-status-warning px-2 py-1">
-                            <i class="bi bi-arrow-repeat spin me-1"></i> En ejecución
+                        <span class="badge badge-sg-status-warning rounded px-2 py-1 small">
+                            <span class="spinner-border spinner-border-sm me-1" role="status" style="width: 8px; height: 8px;"></span>
+                            En curso
                         </span>
                     {% else %}
-                        <span class="badge badge-status-danger px-2 py-1" title="{{ run.error_message or '' }}">
-                            <i class="bi bi-x-circle-fill me-1"></i> Error
+                        <span class="badge badge-sg-status-danger rounded px-2 py-1 small" title="{{ run.error_message or 'Error en la ejecución' }}">
+                            <i class="bi bi-x-circle me-1"></i>Error
                         </span>
                     {% endif %}
                 </td>
-                <td class="text-center fw-bold text-light">{{ run.total_entries }}</td>
-                <td class="text-center text-warning fw-bold">{{ run.total_points_spent }}P</td>
-                <td class="text-center text-info fw-semibold">{{ run.final_points if run.final_points is not none else '--' }}P</td>
-                <td class="text-end pe-3">
-                    <a href="/runs/{{ run.id }}" class="btn btn-sm btn-outline-info">
-                        <i class="bi bi-eye"></i> Detalle
-                    </a>
+
+                <!-- Entradas -->
+                <td class="text-center">
+                    <span class="badge" style="background: #17212b; color: #c7d5e0; border: 1px solid #2a475e; font-size: 0.75rem;">
+                        {{ run.total_entries }}
+                    </span>
+                </td>
+
+                <!-- Puntos Gastados (Discretos, sin amarillo chillón) -->
+                <td class="text-center text-muted small font-monospace">
+                    {{ run.total_points_spent }}P
+                </td>
+
+                <!-- Puntos Restantes -->
+                <td class="text-center text-muted small font-monospace">
+                    {{ run.final_points if run.final_points is not none else '--' }}P
+                </td>
+
+                <!-- Botón Detalles con modal -->
+                <td class="text-end pe-3 text-nowrap">
+                    <button type="button" 
+                            class="btn-sg-detail" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#runDetailModal" 
+                            hx-get="/partials/runs/{{ run.id }}/modal" 
+                            hx-target="#runDetailModalBody" 
+                            title="Ver detalle de sesión #{{ run.id }}">
+                        <i class="bi bi-eye"></i> Detalles
+                    </button>
                 </td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="8" class="text-center py-4 text-muted">
-                    <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
-                    No hay ejecuciones registradas.
+                <td colspan="8" class="text-center py-5 text-muted">
+                    <i class="bi bi-clock-history fs-3 d-block mb-2 opacity-50"></i>
+                    No hay ejecuciones registradas todavía.
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <!-- Paginación Idéntica al Historial -->
+    {% if total_count > 0 %}
+    <div class="d-flex flex-wrap justify-content-between align-items-center p-3 border-top" style="border-color: #2a475e !important; background-color: #19222e;">
+        <div class="text-muted small">
+            Mostrando <span class="text-light fw-semibold">{{ start_idx }}</span> a <span class="text-light fw-semibold">{{ end_idx }}</span> de <span class="text-light fw-semibold">{{ total_count }}</span> ejecuciones
+        </div>
+
+        {% if total_pages > 1 %}
+        <nav aria-label="Navegación de ejecuciones">
+            <ul class="pagination-sg mb-0">
+                <!-- Botón Anterior -->
+                <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                    {% if page > 1 %}
+                    <button class="page-link"
+                            hx-get="/partials/runs-table?page={{ page - 1 }}"
+                            hx-target="#runs-table-container"
+                            hx-swap="innerHTML"
+                            title="Página anterior">
+                        &laquo; Anterior
+                    </button>
+                    {% else %}
+                    <span class="page-link">&laquo; Anterior</span>
+                    {% endif %}
+                </li>
+
+                <!-- Primera página si estamos lejos -->
+                {% if page_numbers[0] > 1 %}
+                <li class="page-item">
+                    <button class="page-link"
+                            hx-get="/partials/runs-table?page=1"
+                            hx-target="#runs-table-container"
+                            hx-swap="innerHTML">
+                        1
+                    </button>
+                </li>
+                {% if page_numbers[0] > 2 %}
+                <li class="page-item disabled">
+                    <span class="page-link">&hellip;</span>
+                </li>
+                {% endif %}
+                {% endif %}
+
+                <!-- Páginas Numéricas -->
+                {% for p in page_numbers %}
+                <li class="page-item {% if p == page %}active{% endif %}">
+                    {% if p == page %}
+                    <span class="page-link">{{ p }}</span>
+                    {% else %}
+                    <button class="page-link"
+                            hx-get="/partials/runs-table?page={{ p }}"
+                            hx-target="#runs-table-container"
+                            hx-swap="innerHTML">
+                        {{ p }}
+                    </button>
+                    {% endif %}
+                </li>
+                {% endfor %}
+
+                <!-- Última página si estamos lejos -->
+                {% if page_numbers[-1] < total_pages %}
+                {% if page_numbers[-1] < total_pages - 1 %}
+                <li class="page-item disabled">
+                    <span class="page-link">&hellip;</span>
+                </li>
+                {% endif %}
+                <li class="page-item">
+                    <button class="page-link"
+                            hx-get="/partials/runs-table?page={{ total_pages }}"
+                            hx-target="#runs-table-container"
+                            hx-swap="innerHTML">
+                        {{ total_pages }}
+                    </button>
+                </li>
+                {% endif %}
+
+                <!-- Botón Siguiente -->
+                <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                    {% if page < total_pages %}
+                    <button class="page-link"
+                            hx-get="/partials/runs-table?page={{ page + 1 }}"
+                            hx-target="#runs-table-container"
+                            hx-swap="innerHTML"
+                            title="Página siguiente">
+                        Siguiente &raquo;
+                    </button>
+                    {% else %}
+                    <span class="page-link">Siguiente &raquo;</span>
+                    {% endif %}
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>

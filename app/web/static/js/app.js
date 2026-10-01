@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initRunBotForm();
     initConfigCategorySorting();
     initConsoleAutoScroll();
+    initAutocheck();
 });
 
 /**
@@ -50,11 +51,10 @@ function initRunBotForm() {
             if (btn) {
                 if (e.detail.successful) {
                     btn.innerHTML = '<i class="bi bi-arrow-repeat spin me-2"></i> Ejecución en curso';
-                    btn.classList.remove('btn-primary');
                     btn.classList.add('btn-warning');
                 } else {
                     btn.disabled = false;
-                    btn.innerHTML = '<svg class="tailwind-svg-icon me-2" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" /></svg> Iniciar Ejecución';
+                    btn.innerHTML = '<i class="bi bi-play-fill fs-5 me-1"></i> Iniciar Ejecución';
                     alert('Error al iniciar el bot.');
                 }
             }
@@ -163,10 +163,18 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
                 btnRun.classList.add('btn-warning');
             } else if (!btnRun.innerHTML.includes('Iniciando')) {
                 btnRun.disabled = false;
-                btnRun.innerHTML = '<svg class="tailwind-svg-icon me-2" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" /></svg> Iniciar Ejecución';
-                btnRun.classList.add('btn-primary');
-                btnRun.classList.remove('btn-warning', 'btn-success');
+                btnRun.innerHTML = '<i class="bi bi-play-fill fs-5 me-1"></i> Iniciar Ejecución';
+                btnRun.classList.remove('btn-warning');
             }
         }
     }
 });
+
+/**
+ * Inicializa los controles del autochecker si el panel existe en el DOM
+ */
+function initAutocheck() {
+    const container = document.getElementById('autocheck-container');
+    if (!container) return;
+    // El polling se maneja via hx-trigger en el HTML, no se necesita JS adicional
+}

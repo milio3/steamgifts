@@ -80,3 +80,16 @@ def notify_points_threshold_exceeded(points: int, username: str = "Usuario", for
     if enviado:
         _LAST_ALERT_SENT_AT = now
     return enviado
+
+
+def notify_automatic_run_completed(run_id: int, entries: int, points_spent: int, points_remaining: int) -> bool:
+    """Envía un resumen a Telegram tras completarse una ejecución automática."""
+    mensaje = (
+        "✅ <b>SteamGifts Bot — Ejecución Automática Finalizada</b>\n\n"
+        f"Ronda <b>#{run_id}</b> completada con éxito:\n"
+        f"🎁 <b>Entradas realizadas:</b> {entries}\n"
+        f"💸 <b>Puntos gastados:</b> {points_spent} P\n"
+        f"💰 <b>Puntos restantes:</b> {points_remaining} P"
+    )
+    return send_telegram_message(mensaje)
+

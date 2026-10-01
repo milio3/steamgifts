@@ -3,25 +3,43 @@
 {% block title %}Detalle de Ejecución #{{ run_id }}{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <a href="/runs" class="text-decoration-none text-muted mb-2 d-inline-block"><i class="bi bi-arrow-left"></i> Volver a Ejecuciones</a>
-    <h2 class="m-0"><i class="bi bi-info-circle text-primary"></i> Detalle de Ejecución #{{ run_id }}</h2>
-</div>
-
-<!-- Resumen de ejecución -->
-<div id="run-detail-summary" hx-get="/partials/runs/{{ run_id }}/summary" hx-trigger="load" hx-swap="innerHTML">
-    <div class="d-flex justify-content-center my-4">
-        <div class="spinner-border text-primary" role="status"></div>
+<div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom" style="border-color: #2a475e !important;">
+    <div class="d-flex align-items-center gap-3">
+        <a href="/runs" class="btn btn-sm py-1 px-3 text-light rounded" style="border: 1px solid #2a475e; background: #17212b; font-size: 0.8rem;">
+            <i class="bi bi-arrow-left me-1"></i> Volver a Ejecuciones
+        </a>
+        <h2 class="h4 fw-bold text-white m-0 d-flex align-items-center gap-2">
+            <i class="bi bi-info-circle text-info"></i> Detalle de Ejecución <span style="color: #66c0f4;">#{{ run_id }}</span>
+        </h2>
     </div>
 </div>
 
-<h4 class="mt-5 mb-3"><i class="bi bi-list-check text-success"></i> Entradas realizadas en esta ejecución</h4>
-<!-- Entradas de la ejecución -->
-<div class="card border-secondary bg-dark-steam-light shadow-sm">
+<!-- Resumen de Métricas de la Ejecución -->
+<div id="run-detail-summary" 
+     class="mb-4"
+     hx-get="/partials/runs/{{ run_id }}/summary" 
+     hx-trigger="load" 
+     hx-swap="innerHTML">
+    <div class="d-flex justify-content-center my-4 py-2">
+        <div class="spinner-border text-info spinner-border-sm" role="status"></div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="fw-bold text-white m-0 d-flex align-items-center gap-2 fs-6">
+        <i class="bi bi-ticket-perforated text-info"></i> Sorteos Procesados en esta Sesión
+    </h5>
+</div>
+
+<!-- Tabla de Entradas de la Sesión (Formato idéntico a Historial y Ejecuciones) -->
+<div class="card card-sg">
     <div class="card-body p-0">
-        <div id="run-entries-container" hx-get="/partials/entries-table?run_id={{ run_id }}" hx-trigger="load" hx-swap="innerHTML">
-            <div class="d-flex justify-content-center my-5">
-                <div class="spinner-border text-primary" role="status"></div>
+        <div id="run-entries-container" 
+             hx-get="/partials/entries-table?run_id={{ run_id }}" 
+             hx-trigger="load" 
+             hx-swap="innerHTML">
+            <div class="d-flex justify-content-center my-5 py-4">
+                <div class="spinner-border text-info" role="status"></div>
             </div>
         </div>
     </div>

@@ -38,14 +38,30 @@ def _crear_cliente() -> SteamGiftsClient:
     )
 
 
-def _ejecutar_bot_en_segundo_plano(categories: Optional[list] = None):
+def _ejecutar_bot_en_segundo_plano(categories: Optional[list] = None, trigger_type: str = "manual"):
     """Función que ejecuta el bot en un hilo de background con su propia sesión de BD."""
+    from app.core.logging_buffer import console_handler
+
+    # Limpiar la consola al inicio de cada ejecución para no mezclar logs anteriores
+    console_handler.clear()
+
     db = SessionLocal()
     try:
         main_app.is_bot_running = True
         client = _crear_cliente()
         engine = BotEngine(client, db)
-        engine.run(categories=categories)
+        summary = engine.run(categories=categories, trigger_type=trigger_type)
+        if trigger_type == "auto":
+            try:
+                from app.services.telegram_alert import notify_automatic_run_completed
+                notify_automatic_run_completed(
+                    run_id=summary.run_id,
+                    entries=summary.total_entries,
+                    points_spent=summary.total_points_spent,
+                    points_remaining=summary.final_points if summary.final_points is not None else 0,
+                )
+            except Exception as ex:
+                logger.warning(f"No se pudo enviar resumen a Telegram: {ex}")
     except Exception as e:
         logger.error(f"Error en ejecución en segundo plano: {e}")
     finally:

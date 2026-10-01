@@ -1,6 +1,8 @@
 """Rutas web del frontend: vistas HTML y endpoints parciales renderizados con Jinja2 y HTMX."""
 
+import html
 import logging
+import math
 import os
 from datetime import datetime, timezone
 from typing import Optional
@@ -22,6 +24,7 @@ from app.core.config import settings, update_settings_and_env
 from app.core.database import get_db
 from app.core.logging_buffer import console_handler
 from app.models.entry import Entry, RunLog
+from app.services.points_checker import points_checker
 from app.services.steamgifts_client import SteamGiftsClient
 
 logger = logging.getLogger(__name__)
@@ -47,22 +50,38 @@ async def raiz():
     return RedirectResponse(url="/dashboard")
 
 
-@router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request, db: Session = Depends(get_db)):
-    """Vista principal: panel de control con métricas precargadas instantáneamente."""
+def _obtener_lista_categorias_configuradas() -> list:
+    """Devuelve la lista ordenada y enriquecida de categorías para vistas y formularios."""
     order, _ = load_categories_config()
-    configured_categories = []
+    categories_list = []
     for idx, cat_id in enumerate(order, start=1):
         info = AVAILABLE_CATEGORIES.get(cat_id, {})
-        configured_categories.append({
+        categories_list.append({
             "id": cat_id,
             "name": info.get("name", cat_id),
             "label": f"{idx}. {info.get('label', cat_id)}",
             "simple_label": f"{idx}. {info.get('name', cat_id)}",
+            "raw_label": info.get("label", cat_id),
             "badge_class": info.get("badge_class", f"badge-{cat_id}"),
+            "svg_icon": info.get("svg_icon", ""),
             "priority": idx,
         })
+    return categories_list
 
+
+def _obtener_cookie_enmascarada() -> str:
+    """Devuelve la cookie PHPSESSID oculta parcialmente para privacidad."""
+    cookie = settings.STEAMGIFTS_PHPSESSID
+    if not cookie:
+        return ""
+    visible = min(8, len(cookie))
+    return cookie[:visible] + "•" * max(0, len(cookie) - visible)
+
+
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request, db: Session = Depends(get_db)):
+    """Vista principal: panel de control con métricas precargadas instantáneamente."""
+    configured_categories = _obtener_lista_categorias_configuradas()
     is_running = getattr(main_app, "is_bot_running", False)
 
     # Carga instantánea de métricas locales sin peticiones externas
@@ -92,6 +111,9 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
 
     known_points = ultima_run.final_points if (ultima_run and ultima_run.final_points is not None) else None
 
+    # Estado del chequeador automático de puntos
+    checker_status = points_checker.get_status()
+
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
@@ -106,6 +128,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "runs": runs,
             "known_points": known_points,
             "threshold": settings.TELEGRAM_POINTS_THRESHOLD,
+            "checker": checker_status,
         },
     )
 
@@ -139,34 +162,15 @@ async def detalle_ejecucion(request: Request, run_id: int):
 @router.get("/config", response_class=HTMLResponse)
 async def configuracion(request: Request):
     """Vista de configuración editable directamente desde la app."""
-    order, _ = load_categories_config()
-    categories_list = []
-    for idx, cat_id in enumerate(order, start=1):
-        info = AVAILABLE_CATEGORIES.get(cat_id, {})
-        categories_list.append({
-            "id": cat_id,
-            "name": info.get("name", cat_id),
-            "label": f"{idx}. {info.get('label', cat_id)}",
-            "raw_label": info.get("label", cat_id),
-            "badge_class": info.get("badge_class", f"badge-{cat_id}"),
-            "svg_icon": info.get("svg_icon", ""),
-            "priority": idx,
-        })
-
-    cookie = settings.STEAMGIFTS_PHPSESSID
-    cookie_oculta = ""
-    if cookie:
-        visible = min(8, len(cookie))
-        cookie_oculta = cookie[:visible] + "•" * max(0, len(cookie) - visible)
-
     return templates.TemplateResponse(
         request=request,
         name="config.html",
         context={
             "title": "Configuración",
             "settings": settings,
-            "cookie_oculta": cookie_oculta,
-            "categories": categories_list,
+            "cookie_oculta": _obtener_cookie_enmascarada(),
+            "categories": _obtener_lista_categorias_configuradas(),
+            "checker": points_checker.get_status(),
         },
     )
 
@@ -223,57 +227,65 @@ async def partial_execution_sessions(request: Request, db: Session = Depends(get
 @router.get("/partials/config-modal", response_class=HTMLResponse)
 async def partial_config_modal(request: Request):
     """Fragmento HTML con el contenido de configuración para el modal."""
-    order, _ = load_categories_config()
-    categories_list = []
-    for idx, cat_id in enumerate(order, start=1):
-        info = AVAILABLE_CATEGORIES.get(cat_id, {})
-        categories_list.append({
-            "id": cat_id,
-            "name": info.get("name", cat_id),
-            "label": f"{idx}. {info.get('label', cat_id)}",
-            "raw_label": info.get("label", cat_id),
-            "badge_class": info.get("badge_class", f"badge-{cat_id}"),
-            "svg_icon": info.get("svg_icon", ""),
-            "priority": idx,
-        })
-
-    cookie = settings.STEAMGIFTS_PHPSESSID
-    cookie_oculta = ""
-    if cookie:
-        visible = min(8, len(cookie))
-        cookie_oculta = cookie[:visible] + "•" * max(0, len(cookie) - visible)
-
     return templates.TemplateResponse(
         request=request,
         name="components/config_form.html",
         context={
             "settings": settings,
-            "cookie_oculta": cookie_oculta,
-            "categories": categories_list,
+            "cookie_oculta": _obtener_cookie_enmascarada(),
+            "categories": _obtener_lista_categorias_configuradas(),
+            "checker": points_checker.get_status(),
         },
     )
 
 
 @router.get("/partials/console-logs", response_class=HTMLResponse)
 async def partial_console_logs():
-    """Fragmento HTML con los logs de la consola en tiempo real."""
+    """Fragmento HTML con los logs de la consola en tiempo real precedidos por el estado del sistema."""
+    status_text = points_checker.get_summary_text()
+    now_str = datetime.now().strftime("%H:%M:%S")
+    time_html = f'<span class="console-time text-nowrap font-monospace" style="display:inline-block; width:68px; color:#64748b; font-size:0.76rem; flex-shrink:0;">[{now_str}]</span>'
+    
+    if points_checker.enabled:
+        badge_style = "display:inline-block; width:100px; text-align:center; font-size:0.72rem; font-weight:700; border-radius:3px; padding:1px 0; margin-right:8px; flex-shrink:0; background:rgba(102,192,244,0.15); color:#66c0f4; border:1px solid rgba(102,192,244,0.35);"
+        badge_html = f'<span class="console-badge" style="{badge_style}">SISTEMA</span>'
+        color_text = "color: #93c5fd;"
+    else:
+        badge_style = "display:inline-block; width:100px; text-align:center; font-size:0.72rem; font-weight:700; border-radius:3px; padding:1px 0; margin-right:8px; flex-shrink:0; background:#19222e; color:#8f98a0; border:1px solid #2a475e;"
+        badge_html = f'<span class="console-badge" style="{badge_style}">SISTEMA</span>'
+        color_text = "color: #8f98a0;"
+
+    header_line = f'<div class="console-line pb-1 mb-2 border-bottom" style="border-color: #243547 !important;">{time_html} {badge_html}<span style="{color_text} font-weight:600;">{html.escape(status_text)}</span></div>'
+
     html_logs = console_handler.get_formatted_html()
+    if not console_handler.logs:
+        contenido = f'{header_line}\n<div class="console-line text-muted fst-italic">consola@steamgifts-bot:~$ Sistema en espera. Pulsa "Iniciar Ejecución" para comenzar manualmente.</div>'
+    else:
+        contenido = f"{header_line}\n{html_logs}"
+
     is_running = getattr(main_app, "is_bot_running", False)
     if is_running:
-        html_logs += '\n<div class="console-line text-warning"><span class="spinner-border spinner-border-sm me-1"></span> Ejecutando bot en segundo plano... <span class="blink">▌</span></div>'
-    return HTMLResponse(html_logs)
+        contenido += '\n<div class="console-line text-warning"><span class="spinner-border spinner-border-sm me-1"></span> Ejecutando bot en segundo plano... <span class="blink">▌</span></div>'
+
+    return HTMLResponse(contenido)
 
 
 @router.post("/partials/clear-console", response_class=HTMLResponse)
 async def partial_clear_console():
-    """Limpia el buffer de la consola web."""
+    """Limpia el buffer de la consola web manteniendo la línea de estado del sistema."""
     console_handler.clear()
-    return HTMLResponse('<div class="console-line text-muted fst-italic">consola@steamgifts-bot:~$ Consola limpiada.</div>')
+    status_text = points_checker.get_summary_text()
+    now_str = datetime.now().strftime("%H:%M:%S")
+    time_html = f'<span class="console-time text-nowrap font-monospace" style="display:inline-block; width:68px; color:#64748b; font-size:0.76rem; flex-shrink:0;">[{now_str}]</span>'
+    badge_style = "display:inline-block; width:100px; text-align:center; font-size:0.72rem; font-weight:700; border-radius:3px; padding:1px 0; margin-right:8px; flex-shrink:0; background:#19222e; color:#8f98a0; border:1px solid #2a475e;"
+    badge_html = f'<span class="console-badge" style="{badge_style}">SISTEMA</span>'
+    header_line = f'<div class="console-line pb-1 mb-2 border-bottom" style="border-color: #243547 !important;">{time_html} {badge_html}<span style="color:#93c5fd; font-weight:600;">{html.escape(status_text)}</span></div>'
+    return HTMLResponse(f'{header_line}\n<div class="console-line text-muted fst-italic">consola@steamgifts-bot:~$ Consola limpiada.</div>')
 
 
 @router.post("/partials/save-config", response_class=HTMLResponse)
 async def partial_save_config(request: Request):
-    """Guarda la configuración general y el orden de categorías desde la app."""
+    """Guarda la configuración general, del autochecker y el orden de categorías desde la app."""
     form_data = await request.form()
 
     phpsessid = str(form_data.get("phpsessid", "")).strip()
@@ -289,10 +301,10 @@ async def partial_save_config(request: Request):
     if max_entries.isdigit():
         updates["MAX_ENTRIES_PER_RUN"] = int(max_entries)
     try:
-        updates["HTTP_TIMEOUT_SECONDS"] = float(timeout)
-        updates["MIN_DELAY_SECONDS"] = float(min_delay)
-        updates["MAX_DELAY_SECONDS"] = float(max_delay)
-        updates["CATEGORY_DELAY_SECONDS"] = float(category_delay)
+        updates["HTTP_TIMEOUT_SECONDS"] = float(int(float(timeout)))
+        updates["MIN_DELAY_SECONDS"] = float(int(float(min_delay)))
+        updates["MAX_DELAY_SECONDS"] = float(int(float(max_delay)))
+        updates["CATEGORY_DELAY_SECONDS"] = float(int(float(category_delay)))
     except ValueError:
         pass
 
@@ -314,15 +326,48 @@ async def partial_save_config(request: Request):
 
     update_settings_and_env(updates)
 
+    # Parámetros de Autocheck / Chequeador de puntos
+    autocheck_enabled = "autocheck_enabled" in form_data
+    try:
+        checker_updates = {
+            "enabled": autocheck_enabled,
+        }
+        min_int = form_data.get("autocheck_min_interval")
+        if min_int and str(min_int).isdigit():
+            checker_updates["min_interval"] = int(min_int)
+        max_int = form_data.get("autocheck_max_interval")
+        if max_int and str(max_int).isdigit():
+            checker_updates["max_interval"] = int(max_int)
+        night_s = form_data.get("autocheck_night_start")
+        if night_s and str(night_s).isdigit():
+            checker_updates["night_start"] = int(night_s)
+        night_e = form_data.get("autocheck_night_end")
+        if night_e and str(night_e).isdigit():
+            checker_updates["night_end"] = int(night_e)
+        
+        checker_updates["autorun_enabled"] = "autocheck_autorun_enabled" in form_data
+        autorun_pts = form_data.get("autocheck_autorun_min_points")
+        if autorun_pts and str(autorun_pts).isdigit():
+            checker_updates["autorun_min_points"] = int(autorun_pts)
+
+        points_checker.update_config(**checker_updates)
+
+        if autocheck_enabled and not points_checker.is_running:
+            points_checker.start()
+        elif not autocheck_enabled and points_checker.is_running:
+            points_checker.stop()
+    except Exception as e:
+        logger.warning(f"Error actualizando configuración del autochecker: {e}")
+
     # Guardar orden de categorías
     categories_order = form_data.getlist("category_order")
     if categories_order:
         save_categories_config(categories_order, categories_order)
 
     return HTMLResponse(
-        "<div class='alert alert-success d-flex align-items-center py-2 mb-0 shadow-sm animate-fade'>"
+        "<div class='alert alert-success d-flex align-items-center py-2 px-3 mb-0 shadow-sm animate-fade' style='background: rgba(92, 126, 16, 0.2); border: 1px solid #7eb318; color: #a4d007;'>"
         "<i class='bi bi-check-circle-fill me-2 fs-5'></i>"
-        "<div><strong>¡Configuración guardada!</strong> Los parámetros, alertas de Telegram y el orden de categorías han sido actualizados con éxito.</div>"
+        "<div><strong>¡Configuración guardada!</strong> Los parámetros generales, el sistema de autochequeo, las alertas de Telegram y el orden de categorías han sido actualizados con éxito.</div>"
         "</div>"
     )
 
@@ -330,70 +375,137 @@ async def partial_save_config(request: Request):
 @router.get("/partials/entries-table", response_class=HTMLResponse)
 async def partial_tabla_entradas(
     request: Request,
+    search: Optional[str] = None,
     category: Optional[str] = None,
-    status: Optional[str] = None,
-    date_start: Optional[str] = None,
-    date_end: Optional[str] = None,
     run_id: Optional[int] = None,
-    limit: int = 50,
-    offset: int = 0,
+    page: int = 1,
+    per_page: int = 15,
     db: Session = Depends(get_db),
 ):
-    """Fragmento HTML con tabla filtrable y paginada de entradas."""
+    """Fragmento HTML con tabla filtrable por nombre/categoría y paginada sin scrollbars."""
     query = db.query(Entry)
 
-    if category:
-        query = query.filter(Entry.category == category)
-    if status:
-        query = query.filter(Entry.result == status)
+    # Buscador por nombre de juego
+    if search and search.strip():
+        query = query.filter(Entry.game_name.ilike(f"%{search.strip()}%"))
+
+    # Filtro por categoría
+    if category and category.strip():
+        query = query.filter(Entry.category == category.strip())
+
+    # Filtro por sesión de ejecución si se especifica
     if run_id:
         query = query.filter(Entry.run_id == run_id)
-    if date_start:
-        try:
-            d_start = datetime.strptime(date_start, "%Y-%m-%d")
-            query = query.filter(Entry.timestamp >= d_start)
-        except ValueError:
-            pass
-    if date_end:
-        try:
-            d_end = datetime.strptime(date_end, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
-            query = query.filter(Entry.timestamp <= d_end)
-        except ValueError:
-            pass
 
+    total_count = query.count()
+    total_pages = max(1, math.ceil(total_count / per_page))
+
+    if page < 1:
+        page = 1
+    elif page > total_pages:
+        page = total_pages
+
+    offset = (page - 1) * per_page
     entries = (
         query.order_by(Entry.timestamp.desc())
         .offset(offset)
-        .limit(limit)
+        .limit(per_page)
         .all()
     )
+
+    # Rango de números de página para paginador (máx 5 páginas)
+    start_p = max(1, page - 2)
+    end_p = min(total_pages, page + 2)
+    page_numbers = list(range(start_p, end_p + 1))
+
+    # Rango visible de registros (ej. 1 a 12 de 45)
+    start_idx = offset + 1 if total_count > 0 else 0
+    end_idx = min(offset + per_page, total_count)
 
     return templates.TemplateResponse(
         request=request,
         name="components/entries_table.html",
-        context={"entries": entries},
+        context={
+            "entries": entries,
+            "page": page,
+            "total_pages": total_pages,
+            "total_count": total_count,
+            "per_page": per_page,
+            "page_numbers": page_numbers,
+            "start_idx": start_idx,
+            "end_idx": end_idx,
+            "search": search or "",
+            "category": category or "",
+            "run_id": run_id,
+        },
     )
 
 
 @router.get("/partials/runs-table", response_class=HTMLResponse)
 async def partial_tabla_ejecuciones(
     request: Request,
-    limit: int = 20,
-    offset: int = 0,
+    page: int = 1,
+    per_page: int = 15,
     db: Session = Depends(get_db),
 ):
-    """Fragmento HTML con la lista de ejecuciones del bot."""
+    """Fragmento HTML con la lista paginada de ejecuciones del bot (hasta 15 filas como Historial)."""
+    query = db.query(RunLog)
+    total_count = query.count()
+    total_pages = max(1, math.ceil(total_count / per_page))
+
+    if page < 1:
+        page = 1
+    elif page > total_pages:
+        page = total_pages
+
+    offset = (page - 1) * per_page
     runs = (
-        db.query(RunLog)
-        .order_by(RunLog.started_at.desc())
+        query.order_by(RunLog.started_at.desc())
         .offset(offset)
-        .limit(limit)
+        .limit(per_page)
         .all()
     )
+
+    start_p = max(1, page - 2)
+    end_p = min(total_pages, page + 2)
+    page_numbers = list(range(start_p, end_p + 1))
+
+    start_idx = offset + 1 if total_count > 0 else 0
+    end_idx = min(offset + per_page, total_count)
+
     return templates.TemplateResponse(
         request=request,
         name="components/runs_table.html",
-        context={"runs": runs},
+        context={
+            "runs": runs,
+            "page": page,
+            "total_pages": total_pages,
+            "total_count": total_count,
+            "per_page": per_page,
+            "page_numbers": page_numbers,
+            "start_idx": start_idx,
+            "end_idx": end_idx,
+        },
+    )
+
+
+@router.get("/partials/runs/{run_id}/modal", response_class=HTMLResponse)
+async def partial_modal_ejecucion(
+    request: Request,
+    run_id: int,
+    db: Session = Depends(get_db),
+):
+    """Fragmento HTML con el contenido completo para el modal de detalle de ejecución."""
+    run = db.query(RunLog).filter(RunLog.id == run_id).first()
+    if not run:
+        return HTMLResponse(
+            "<div class='p-4 text-center text-muted'>Ejecución no encontrada.</div>"
+        )
+    entries = db.query(Entry).filter(Entry.run_id == run_id).order_by(Entry.timestamp.asc()).all()
+    return templates.TemplateResponse(
+        request=request,
+        name="components/run_detail_modal.html",
+        context={"run": run, "entries": entries},
     )
 
 
@@ -615,3 +727,58 @@ async def partial_probar_telegram():
             "<i class='bi bi-x-circle me-1'></i> No se pudo enviar el mensaje a Telegram. Verifica el token y chat ID."
             "</div>"
         )
+
+
+# --- Endpoints del Chequeador Automatico de Puntos ---
+
+@router.post('/partials/autocheck-toggle', response_class=HTMLResponse)
+async def partial_autocheck_toggle(request: Request):
+    if points_checker.is_running:
+        points_checker.stop()
+    else:
+        points_checker.start()
+    return templates.TemplateResponse(
+        request=request,
+        name='components/autocheck_status.html',
+        context={'checker': points_checker.get_status()},
+    )
+
+
+@router.post('/partials/autocheck-config', response_class=HTMLResponse)
+async def partial_autocheck_config(request: Request):
+    form_data = await request.form()
+    updates = {}
+    autorun_raw = form_data.get('autorun_enabled')
+    if autorun_raw is not None:
+        updates['autorun_enabled'] = autorun_raw.lower() in ('true', '1', 'on')
+    min_points_raw = form_data.get('autorun_min_points')
+    if min_points_raw and min_points_raw.isdigit():
+        val = int(min_points_raw)
+        if 50 <= val <= 500:
+            updates['autorun_min_points'] = val
+    min_interval_raw = form_data.get('min_interval')
+    if min_interval_raw and min_interval_raw.isdigit():
+        val = int(min_interval_raw)
+        if 5 <= val <= 300:
+            updates['min_interval'] = val
+    max_interval_raw = form_data.get('max_interval')
+    if max_interval_raw and max_interval_raw.isdigit():
+        val = int(max_interval_raw)
+        if 10 <= val <= 600:
+            updates['max_interval'] = val
+    if updates:
+        points_checker.update_config(**updates)
+    return templates.TemplateResponse(
+        request=request,
+        name='components/autocheck_status.html',
+        context={'checker': points_checker.get_status()},
+    )
+
+
+@router.get('/partials/autocheck-status', response_class=HTMLResponse)
+async def partial_autocheck_status(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name='components/autocheck_status.html',
+        context={'checker': points_checker.get_status()},
+    )

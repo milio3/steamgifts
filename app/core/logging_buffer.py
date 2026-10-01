@@ -9,44 +9,54 @@ from typing import Any, Dict, List
 
 
 def format_log_to_html(entry: Dict[str, Any]) -> str:
-    """Convierte una entrada de log a una línea HTML estilizada sin emojis ni URLs largas para la consola."""
+    """Convierte una entrada de log a una línea HTML con badges de ancho fijo para alineación perfecta."""
     t = entry["time"]
     raw_msg = entry["msg"]
-    # Limpiar URLs que puedan romper el formato visual de la consola
+    # Limpiar URLs largas
     clean_msg = re.sub(r'https?://\S+', '', raw_msg).strip()
     clean_msg = re.sub(r':\s*$', '', clean_msg)
-    escaped_msg = html.escape(clean_msg)
     level = entry["level"]
 
-    color_class = "text-light"
-    icon_svg = ""
+    # Estilo común para todos los badges (ancho fijo exacto de 100px para alineación perfecta)
+    b_style = "display: inline-block; width: 100px; text-align: center; font-size: 0.72rem; font-weight: 700; border-radius: 3px; padding: 1px 0; margin-right: 8px; flex-shrink: 0;"
 
     msg_lower = raw_msg.lower()
 
-    if "[ok]" in msg_lower or "completad" in msg_lower or "éxito" in msg_lower:
-        color_class = "text-success fw-medium"
-        icon_svg = '<svg class="tailwind-svg-mini text-success me-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>'
+    if "[autochecker]" in msg_lower:
+        badge_html = f'<span class="console-badge" style="{b_style} background:#17212b; color:#66c0f4; border:1px solid #2a475e;">CHECKER</span>'
+        color_style = "color: #93c5fd;"
+        clean_msg = re.sub(r'\[AUTOCHECKER\]\s*', '', clean_msg)
     elif "[error]" in msg_lower or level == "ERROR":
-        color_class = "text-danger fw-bold"
-        icon_svg = '<svg class="tailwind-svg-mini text-danger me-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>'
-    elif "[aviso]" in msg_lower or level == "WARNING":
-        color_class = "text-warning fw-medium"
-        icon_svg = '<svg class="tailwind-svg-mini text-warning me-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>'
+        badge_html = f'<span class="console-badge" style="{b_style} background:rgba(217,83,79,0.2); color:#f87171; border:1px solid rgba(217,83,79,0.4);">ERROR</span>'
+        color_style = "color: #f87171; font-weight: 600;"
+        clean_msg = re.sub(r'\[ERROR\]\s*', '', clean_msg)
+    elif "[ok]" in msg_lower or "éxito" in msg_lower or "completad" in msg_lower:
+        badge_html = f'<span class="console-badge" style="{b_style} background:rgba(92,126,16,0.2); color:#96b847; border:1px solid rgba(150,184,71,0.4);">ÉXITO</span>'
+        color_style = "color: #4ade80;"
+        clean_msg = re.sub(r'\[OK\]\s*', '', clean_msg)
     elif "[sorteo]" in msg_lower or "entrando en" in msg_lower:
-        color_class = "text-info fw-medium"
-        icon_svg = '<svg class="tailwind-svg-mini text-info me-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" /></svg>'
+        badge_html = f'<span class="console-badge" style="{b_style} background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.4);">SORTEO</span>'
+        color_style = "color: #38bdf8;"
+        clean_msg = re.sub(r'\[SORTEO\]\s*', '', clean_msg)
     elif "[inicio]" in msg_lower or "iniciando" in msg_lower:
-        color_class = "text-primary fw-bold"
-        icon_svg = '<svg class="tailwind-svg-mini text-primary me-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" /></svg>'
-    elif "═" in raw_msg or "───" in raw_msg:
-        color_class = "text-secondary small"
-    elif "esperando" in msg_lower:
-        color_class = "text-warning"
-    elif "[limite]" in msg_lower or "[fin]" in msg_lower:
-        color_class = "text-warning fw-bold"
-        icon_svg = '<svg class="tailwind-svg-mini text-warning me-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" /></svg>'
+        badge_html = f'<span class="console-badge" style="{b_style} background:rgba(56,189,248,0.15); color:#60a5fa; border:1px solid rgba(56,189,248,0.4);">INICIO</span>'
+        color_style = "color: #60a5fa; font-weight: 600;"
+        clean_msg = re.sub(r'\[INICIO\]\s*', '', clean_msg)
+    elif "[aviso]" in msg_lower or level == "WARNING" or "esperando" in msg_lower:
+        badge_html = f'<span class="console-badge" style="{b_style} background:rgba(229,169,60,0.15); color:#e5a93c; border:1px solid rgba(229,169,60,0.4);">AVISO</span>'
+        color_style = "color: #fbbf24;"
+        clean_msg = re.sub(r'\[AVISO\]\s*', '', clean_msg)
+    elif "cuenta:" in msg_lower or "puntos:" in msg_lower:
+        badge_html = f'<span class="console-badge" style="{b_style} background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.4);">CUENTA</span>'
+        color_style = "color: #a3e635; font-weight: 500;"
+    else:
+        badge_html = f'<span class="console-badge" style="{b_style} background:#19222e; color:#8f98a0; border:1px solid #2a475e;">SISTEMA</span>'
+        color_style = "color: #c7d5e0;"
 
-    return f'<div class="console-line"><span class="console-time text-muted">[{t}]</span> {icon_svg}<span class="{color_class}">{escaped_msg}</span></div>'
+    escaped_msg = html.escape(clean_msg.strip())
+    time_html = f'<span class="console-time text-nowrap font-monospace" style="display:inline-block; width:68px; color:#64748b; font-size:0.76rem; flex-shrink:0;">[{t}]</span>'
+
+    return f'<div class="console-line">{time_html} {badge_html}<span style="{color_style}">{escaped_msg}</span></div>'
 
 
 class WebConsoleHandler(logging.Handler):

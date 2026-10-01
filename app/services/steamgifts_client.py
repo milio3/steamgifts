@@ -1,8 +1,12 @@
-"""Cliente HTTP para interactuar con SteamGifts.com mediante scraping y AJAX."""
-
 import logging
 import re
+import time
 from typing import List, Optional
+
+# Cache en memoria para información de cuenta (mínimo 60s entre peticiones a SteamGifts)
+_account_cache: Optional["AccountInfo"] = None
+_account_cache_timestamp: float = 0.0
+_ACCOUNT_CACHE_TTL: float = 60.0
 
 try:
     from curl_cffi import requests as http_requests
@@ -109,8 +113,13 @@ class SteamGiftsClient:
             logger.warning(f"Sesión no válida: {motivo}")
         return valida
 
-    def get_account_info(self) -> AccountInfo:
-        """Obtiene puntos, nivel, nombre de usuario y token XSRF de la cuenta."""
+    def get_account_info(self, force: bool = False) -> AccountInfo:
+        """Obtiene puntos, nivel, nombre de usuario y token XSRF de la cuenta (con cache de 60s)."""
+        global _account_cache, _account_cache_timestamp
+        now = time.time()
+        if not force and _account_cache and (now - _account_cache_timestamp < _ACCOUNT_CACHE_TTL):
+            return _account_cache
+
         try:
             response = self.session.get(self.base_url, timeout=self.timeout)
             response.raise_for_status()
@@ -142,10 +151,13 @@ class SteamGiftsClient:
                 if len(partes) >= 2:
                     username = partes[-1]
 
-            logger.info(f"Cuenta: {username} | Puntos: {puntos} | Nivel: {nivel}")
-            return AccountInfo(
+            logger.debug(f"Cuenta: {username} | Puntos: {puntos} | Nivel: {nivel}")
+            info = AccountInfo(
                 points=puntos, level=nivel, username=username, xsrf_token=xsrf_token
             )
+            _account_cache = info
+            _account_cache_timestamp = now
+            return info
         except Exception as e:
             logger.error(f"Error obteniendo información de la cuenta: {e}")
             raise

@@ -26,6 +26,7 @@ class RunLog(Base):
     final_points = Column(Integer, nullable=True)
     status = Column(String(20), default="running")  # running, completed, error
     error_message = Column(String(500), nullable=True)
+    trigger_type = Column(String(20), default="manual")  # manual, auto
 
     entries = relationship("Entry", back_populates="run_log")
 

@@ -102,7 +102,7 @@ def test_obtener_y_actualizar_categorias_api(client):
         "wishlist",
         "dlc",
         "group",
-        "multiple_copies",
+        "Multiple Copies",
         "recommended",
         "new",
         "all",

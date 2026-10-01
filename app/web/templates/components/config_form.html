@@ -1,40 +1,50 @@
-<!-- Formulario de Configuración reutilizable para Modal y Vista -->
+<!-- Formulario de Configuración: 2/3 Ajustes Principales + 1/3 Categorías en Lateral -->
 <form id="config-form" hx-post="/partials/save-config" hx-target="#save-feedback" hx-swap="innerHTML">
-    <div class="row">
-        <div class="col-lg-7">
-            <!-- Credenciales de Sesión y Diagnóstico -->
-            <div class="card border-secondary bg-dark-steam-light shadow-sm mb-4">
-                <div class="card-header border-secondary bg-transparent py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="card-title m-0"><i class="bi bi-shield-lock text-warning me-2"></i> Credenciales y Diagnóstico de Conexión</h5>
+    <div class="row g-3">
+        
+        <!-- COLUMNA PRINCIPAL (2/3 del espacio): Ajustes y Parámetros -->
+        <div class="col-lg-8 d-flex flex-column gap-3">
+            
+            <!-- 1. Credenciales y Diagnóstico de Conexión -->
+            <div class="card card-sg">
+                <div class="card-header card-header-sg py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="d-flex align-items-center gap-2 small fw-bold">
+                        <i class="bi bi-shield-lock text-warning"></i>
+                        <span>Credenciales y Diagnóstico de Conexión</span>
+                    </span>
                     <button type="button" 
-                            class="btn btn-sm btn-outline-primary" 
+                            class="btn-sg-detail py-1 px-3" 
                             hx-get="/partials/verify-session" 
                             hx-target="#session-result"
-                            hx-indicator="#verify-spinner">
-                        <span id="verify-spinner" class="spinner-border spinner-border-sm me-1 htmx-indicator" role="status"></span>
-                        <i class="bi bi-shield-check"></i> Verificar Sesión
+                            hx-indicator="#verify-spinner"
+                            style="font-size: 0.75rem; height: 26px;"
+                            title="Comprobar validez de la cookie en SteamGifts">
+                        <span id="verify-spinner" class="spinner-border spinner-border-sm me-1 htmx-indicator" role="status" style="width: 10px; height: 10px;"></span>
+                        <i class="bi bi-shield-check me-1"></i> Verificar Sesión
                     </button>
                 </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="cookie-input" class="form-label text-muted small fw-bold">COOKIE PHPSESSID</label>
-                        <div class="input-group">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="input-group input-group-sm flex-grow-1">
+                            <span class="input-group-text py-0 text-muted" style="background: #17212b; border-color: #2a475e; font-size: 0.75rem; font-weight: 600;">
+                                PHPSESSID
+                            </span>
                             <input type="password" 
                                    id="cookie-input" 
                                    name="phpsessid" 
-                                   class="form-control bg-dark text-light border-secondary font-monospace" 
+                                   class="form-control form-control-sm font-monospace" 
                                    value="{{ settings.STEAMGIFTS_PHPSESSID }}" 
-                                   placeholder="Pega aquí tu cookie PHPSESSID..."
+                                   placeholder="Pega tu cookie..."
                                    required>
-                            <button class="btn btn-outline-secondary" type="button" id="toggle-cookie-btn">
-                                <i class="bi bi-eye"></i>
+                            <button class="btn btn-outline-secondary py-0 px-2" type="button" id="toggle-cookie-btn" style="border-color: #2a475e; background: #17212b; color: #8f98a0;">
+                                <i class="bi bi-eye small"></i>
                             </button>
                         </div>
-                        <div class="form-text text-muted">
+                        <div class="text-nowrap small">
                             {% if settings.STEAMGIFTS_PHPSESSID %}
-                                <span class="text-success"><i class="bi bi-check-circle"></i> Cookie guardada ({{ cookie_oculta }})</span>
+                                <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Sesión activa</span>
                             {% else %}
-                                <span class="text-danger"><i class="bi bi-exclamation-circle"></i> Cookie no configurada</span>
+                                <span class="text-danger"><i class="bi bi-exclamation-circle-fill me-1"></i>Sin cookie</span>
                             {% endif %}
                         </div>
                     </div>
@@ -42,155 +52,272 @@
                 </div>
             </div>
 
-            <!-- Parámetros de Control y Rate Limiting -->
-            <div class="card border-secondary bg-dark-steam-light shadow-sm mb-4">
-                <div class="card-header border-secondary bg-transparent py-3">
-                    <h5 class="card-title m-0"><i class="bi bi-speedometer text-success me-2"></i> Parámetros de Ejecución</h5>
+            <!-- 2. Parámetros de Ejecución (Ubicado debajo de Credenciales) -->
+            <div class="card card-sg">
+                <div class="card-header card-header-sg py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="d-flex align-items-center gap-2 small fw-bold">
+                        <i class="bi bi-sliders text-success"></i>
+                        <span>Parámetros de Ejecución</span>
+                    </span>
                 </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">MÁXIMO DE ENTRADAS POR RONDA</label>
+                <div class="card-body p-3">
+                    <!-- Parámetro interno oculto -->
+                    <input type="hidden" name="http_timeout_seconds" value="{{ settings.HTTP_TIMEOUT_SECONDS | int }}">
+
+                    <!-- Fila 1: Máximo de Entradas (ancho ajustado y proporcionado) -->
+                    <div class="mb-3" style="max-width: 220px;">
+                        <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">MÁXIMO DE ENTRADAS</label>
+                        <div class="input-group input-group-sm">
                             <input type="number" 
                                    name="max_entries_per_run" 
-                                   class="form-control bg-dark text-light border-secondary" 
+                                   class="form-control form-control-sm font-monospace text-center" 
                                    value="{{ settings.MAX_ENTRIES_PER_RUN }}" 
-                                   min="1" max="500" required>
-                            <div class="form-text text-muted small">Límite de sorteos por ejecución.</div>
+                                   min="1" max="500" step="1" required>
+                            <span class="input-group-text py-0 text-muted" style="background: #17212b; border-color: #2a475e; font-size: 0.72rem;">entradas</span>
                         </div>
+                    </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">TIMEOUT HTTP (SEGUNDOS)</label>
-                            <input type="number" 
-                                   step="0.5" 
-                                   name="http_timeout_seconds" 
-                                   class="form-control bg-dark text-light border-secondary" 
-                                   value="{{ settings.HTTP_TIMEOUT_SECONDS }}" 
-                                   min="5" max="60" required>
-                            <div class="form-text text-muted small">Espera máxima por petición.</div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">DELAY MÍNIMO (s)</label>
-                            <input type="number" 
-                                   step="0.5" 
-                                   name="min_delay_seconds" 
-                                   class="form-control bg-dark text-light border-secondary" 
-                                   value="{{ settings.MIN_DELAY_SECONDS }}" 
-                                   min="1" max="30" required>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">DELAY MÁXIMO (s)</label>
-                            <input type="number" 
-                                   step="0.5" 
-                                   name="max_delay_seconds" 
-                                   class="form-control bg-dark text-light border-secondary" 
-                                   value="{{ settings.MAX_DELAY_SECONDS }}" 
-                                   min="1" max="60" required>
-                        </div>
-
-                        <div class="col-12">
-                            <label class="form-label text-muted small fw-bold">DELAY ENTRE CATEGORÍAS (s)</label>
-                            <input type="number" 
-                                   step="0.5" 
-                                   name="category_delay_seconds" 
-                                   class="form-control bg-dark text-light border-secondary" 
-                                   value="{{ settings.CATEGORY_DELAY_SECONDS }}" 
-                                   min="1" max="60" required>
+                    <!-- Fila 2: Pausas en su propia fila espaciosa para evitar apelmazamiento -->
+                    <div class="pt-2 border-top" style="border-color: #243547 !important;">
+                        <div class="row g-3">
+                            <div class="col-md-4 col-sm-4">
+                                <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">PAUSA CATEGORÍAS</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" 
+                                           name="category_delay_seconds" 
+                                           class="form-control form-control-sm font-monospace text-center" 
+                                           value="{{ settings.CATEGORY_DELAY_SECONDS | int }}" 
+                                           min="1" max="60" step="1" required>
+                                    <span class="input-group-text py-0 text-muted" style="background: #17212b; border-color: #2a475e; font-size: 0.72rem;">seg</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4 col-sm-4">
+                                <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">PAUSA MÍN. SORTEOS</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" 
+                                           name="min_delay_seconds" 
+                                           class="form-control form-control-sm font-monospace text-center" 
+                                           value="{{ settings.MIN_DELAY_SECONDS | int }}" 
+                                           min="1" max="30" step="1" required>
+                                    <span class="input-group-text py-0 text-muted" style="background: #17212b; border-color: #2a475e; font-size: 0.72rem;">seg</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4 col-sm-4">
+                                <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">PAUSA MÁX. SORTEOS</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" 
+                                           name="max_delay_seconds" 
+                                           class="form-control form-control-sm font-monospace text-center" 
+                                           value="{{ settings.MAX_DELAY_SECONDS | int }}" 
+                                           min="1" max="60" step="1" required>
+                                    <span class="input-group-text py-0 text-muted" style="background: #17212b; border-color: #2a475e; font-size: 0.72rem;">seg</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Alertas de Telegram -->
-            <div class="card border-secondary bg-dark-steam-light shadow-sm mb-4">
-                <div class="card-header border-secondary bg-transparent py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="card-title m-0 d-flex align-items-center gap-2">
-                        <i class="bi bi-telegram text-info"></i>
-                        <span>Alertas de Telegram</span>
-                    </h5>
-                    <button type="button" 
-                            class="btn btn-sm btn-outline-info" 
-                            hx-post="/partials/test-telegram" 
-                            hx-target="#telegram-test-result"
-                            hx-indicator="#telegram-spinner">
-                        <span id="telegram-spinner" class="spinner-border spinner-border-sm me-1 htmx-indicator" role="status"></span>
-                        <i class="bi bi-send me-1"></i> Probar Alerta
-                    </button>
+            <!-- 3. Chequeo Automático y Programación -->
+            <div class="card card-sg">
+                <div class="card-header card-header-sg py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="d-flex align-items-center gap-2 small fw-bold">
+                        <i class="bi bi-clock-history text-info"></i>
+                        <span>Chequeo Automático de Puntos</span>
+                    </span>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               role="switch" 
+                               id="autocheck-switch" 
+                               name="autocheck_enabled" 
+                               {% if checker and checker.enabled %}checked{% endif %}
+                               title="Activar o desactivar el chequeo periódico">
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="form-check form-switch mb-3">
+                <div class="card-body p-3">
+                    <div class="row g-3">
+                        <div class="col-md-3 col-sm-6">
+                            <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">INTERVALO MÍNIMO</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" 
+                                       name="autocheck_min_interval" 
+                                       class="form-control form-control-sm font-monospace text-center" 
+                                       value="{{ checker.min_interval if checker else 60 }}" 
+                                       min="5" max="300" step="1" required>
+                                <span class="input-group-text py-0 text-muted" style="background: #17212b; border-color: #2a475e; font-size: 0.72rem;">min</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">INTERVALO MÁXIMO</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" 
+                                       name="autocheck_max_interval" 
+                                       class="form-control form-control-sm font-monospace text-center" 
+                                       value="{{ checker.max_interval if checker else 120 }}" 
+                                       min="10" max="600" step="1" required>
+                                <span class="input-group-text py-0 text-muted" style="background: #17212b; border-color: #2a475e; font-size: 0.72rem;">min</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">PAUSA INICIO</label>
+                            <select name="autocheck_night_start" class="form-select form-select-sm font-monospace text-center" style="background-color: #17212b; border-color: #2a475e; color: #c7d5e0;">
+                                {% set start_val = checker.night_start if checker else 1 %}
+                                {% for h in [23, 0, 1, 2, 3] %}
+                                    <option value="{{ h }}" {% if start_val == h %}selected{% endif %}>{{ "%02d:00 h"|format(h) }}</option>
+                                {% endfor %}
+                                {% if start_val not in [23, 0, 1, 2, 3] %}
+                                    <option value="{{ start_val }}" selected>{{ "%02d:00 h"|format(start_val) }}</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">PAUSA FIN</label>
+                            <select name="autocheck_night_end" class="form-select form-select-sm font-monospace text-center" style="background-color: #17212b; border-color: #2a475e; color: #c7d5e0;">
+                                {% set end_val = checker.night_end if checker else 9 %}
+                                {% for h in [6, 7, 8, 9, 10] %}
+                                    <option value="{{ h }}" {% if end_val == h %}selected{% endif %}>{{ "%02d:00 h"|format(h) }}</option>
+                                {% endfor %}
+                                {% if end_val not in [6, 7, 8, 9, 10] %}
+                                    <option value="{{ end_val }}" selected>{{ "%02d:00 h"|format(end_val) }}</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Auto-Ejecución del Bot (Sección independiente) -->
+            <div class="card card-sg">
+                <div class="card-header card-header-sg py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="d-flex align-items-center gap-2 small fw-bold">
+                        <i class="bi bi-lightning-charge-fill text-warning"></i>
+                        <span>Auto-Ejecución del Bot</span>
+                    </span>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               role="switch" 
+                               id="autocheck-autorun-switch" 
+                               name="autocheck_autorun_enabled" 
+                               {% if checker and checker.autorun_enabled %}checked{% endif %}
+                               title="Activar o desactivar la ejecución automática por puntos">
+                    </div>
+                </div>
+                <div class="card-body p-3">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-8">
+                            <p class="text-muted small mb-0" style="font-size: 0.82rem; line-height: 1.4;">
+                                Lanza automáticamente una ronda de sorteos en segundo plano cuando tus puntos alcancen o superen el umbral configurado.
+                            </p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">UMBRAL DE ACTIVACIÓN</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" 
+                                       name="autocheck_autorun_min_points" 
+                                       class="form-control form-control-sm font-monospace text-center" 
+                                       value="{{ checker.autorun_min_points if checker else 380 }}" 
+                                       min="50" max="500" step="10" required>
+                                <span class="input-group-text py-0 text-muted" style="background: #17212b; border-color: #2a475e; font-size: 0.72rem;">pts</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Alertas de Telegram (Icono con color sobrio) -->
+            <div class="card card-sg">
+                <div class="card-header card-header-sg py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="d-flex align-items-center gap-2 small fw-bold">
+                        <i class="bi bi-telegram" style="color: #4a9bd4;"></i>
+                        <span>Alertas de Telegram</span>
+                    </span>
+                    <div class="form-check form-switch mb-0">
                         <input class="form-check-input" 
                                type="checkbox" 
                                role="switch" 
                                id="telegram-alerts-switch" 
                                name="telegram_alerts_enabled" 
-                               {% if settings.TELEGRAM_ALERTS_ENABLED %}checked{% endif %}>
-                        <label class="form-check-label text-light fw-semibold" for="telegram-alerts-switch">
-                            Activar avisos al alcanzar umbral de puntos
-                        </label>
+                               {% if settings.TELEGRAM_ALERTS_ENABLED %}checked{% endif %}
+                               title="Activar o desactivar notificaciones por Telegram">
                     </div>
-
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">UMBRAL DE PUNTOS</label>
-                            <input type="number" 
-                                   name="telegram_points_threshold" 
-                                   class="form-control bg-dark text-light border-secondary" 
-                                   value="{{ settings.TELEGRAM_POINTS_THRESHOLD }}" 
-                                   min="50" max="400" required>
-                            <div class="form-text text-muted small">Límite SteamGifts: 400 P.</div>
+                </div>
+                <div class="card-body p-3">
+                    <div class="row g-3 mb-2">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">UMBRAL ALERTA</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" 
+                                       name="telegram_points_threshold" 
+                                       class="form-control form-control-sm font-monospace text-center" 
+                                       value="{{ settings.TELEGRAM_POINTS_THRESHOLD }}" 
+                                       min="50" max="500" step="10" required>
+                                <span class="input-group-text py-0 text-muted" style="background: #17212b; border-color: #2a475e; font-size: 0.72rem;">pts</span>
+                            </div>
                         </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">CHAT ID</label>
+                        <div class="col-md-5">
+                            <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">CHAT ID</label>
                             <input type="text" 
                                    name="telegram_chat_id" 
-                                   class="form-control bg-dark text-light border-secondary font-monospace" 
+                                   class="form-control form-control-sm font-monospace" 
                                    value="{{ settings.TELEGRAM_CHAT_ID }}" 
-                                   placeholder="123456789" required>
+                                   placeholder="Ej: 123456789" required>
                         </div>
-
-                        <div class="col-12">
-                            <label class="form-label text-muted small fw-bold">TOKEN DEL BOT</label>
-                            <input type="password" 
-                                   name="telegram_bot_token" 
-                                   class="form-control bg-dark text-light border-secondary font-monospace" 
-                                   value="{{ settings.TELEGRAM_BOT_TOKEN }}" 
-                                   placeholder="Token de @BotFather" required>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="button" 
+                                    class="btn-sg-detail w-100 justify-content-center" 
+                                    hx-post="/partials/test-telegram" 
+                                    hx-target="#telegram-test-result"
+                                    hx-indicator="#telegram-spinner"
+                                    style="height: 31px; font-size: 0.8rem;"
+                                    title="Enviar mensaje de prueba a Telegram">
+                                <span id="telegram-spinner" class="spinner-border spinner-border-sm me-1 htmx-indicator" role="status" style="width: 10px; height: 10px;"></span>
+                                <i class="bi bi-send me-1"></i> Probar Conexión
+                            </button>
                         </div>
                     </div>
-
-                    <div id="telegram-test-result" class="mt-3"></div>
+                    <div>
+                        <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">TOKEN DEL BOT (@BotFather)</label>
+                        <input type="password" 
+                               name="telegram_bot_token" 
+                               class="form-control form-control-sm font-monospace" 
+                               value="{{ settings.TELEGRAM_BOT_TOKEN }}" 
+                               placeholder="Token de @BotFather" required>
+                    </div>
+                    <div id="telegram-test-result" class="mt-2"></div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Orden de Categorías -->
-        <div class="col-lg-5">
-            <div class="card border-secondary bg-dark-steam-light shadow-sm mb-4">
-                <div class="card-header border-secondary bg-transparent py-3">
-                    <h5 class="card-title m-0"><i class="bi bi-sort-numeric-down text-info me-2"></i> Orden de Categorías</h5>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted small mb-3">
-                        Arrastra para establecer el orden de prioridad:
-                    </p>
 
-                    <div id="config-category-list" class="d-flex flex-column gap-2 mb-3">
+        </div>
+
+        <!-- COLUMNA LATERAL (1/3 del espacio como máximo): Categorías + Guardar -->
+        <div class="col-lg-4 d-flex flex-column gap-3">
+            
+            <!-- 6. Orden y Prioridad de Categorías -->
+            <div class="card card-sg">
+                <div class="card-header card-header-sg py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="d-flex align-items-center gap-2 small fw-bold">
+                        <i class="bi bi-sort-numeric-down text-info"></i>
+                        <span>Prioridad de Categorías</span>
+                    </span>
+                    <span class="text-muted small" style="font-size: 0.7rem;">Arrastra</span>
+                </div>
+                <div class="card-body p-3">
+                    <div id="config-category-list" class="d-flex flex-column gap-2">
                         {% for cat in categories %}
-                        <div class="category-sortable-item d-flex align-items-center justify-content-between p-3 rounded bg-dark border border-secondary" 
+                        <div class="category-sortable-item d-flex align-items-center justify-content-between px-3 py-2 rounded border" 
+                             style="background-color: #17212b; border-color: #2a475e !important; height: 36px;"
                              data-category="{{ cat.id }}" 
                              data-raw-label="{{ cat.raw_label }}"
                              draggable="true">
                             <input type="hidden" name="category_order" value="{{ cat.id }}">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="drag-handle text-secondary cursor-grab me-2" title="Arrastrar para ordenar">
-                                    <i class="bi bi-grip-vertical fs-5"></i>
+                            <div class="d-flex align-items-center gap-2 text-truncate">
+                                <span class="drag-handle text-secondary cursor-grab" title="Arrastrar para ordenar">
+                                    <i class="bi bi-grip-vertical"></i>
                                 </span>
-                                <span class="text-info me-1">{{ cat.svg_icon | safe }}</span>
-                                <span class="category-display-name fw-bold text-light">{{ cat.label }}</span>
+                                <span class="text-info d-flex align-items-center" style="font-size: 0.9rem;">{{ cat.svg_icon | safe }}</span>
+                                <span class="category-display-name fw-semibold text-light text-truncate" style="font-size: 0.85rem;">{{ cat.label }}</span>
                             </div>
                             <span class="text-muted small"><i class="bi bi-arrow-down-up"></i></span>
                         </div>
@@ -199,13 +326,15 @@
                 </div>
             </div>
 
-            <!-- Botón de Guardar y Feedback -->
-            <div class="d-grid mb-4">
-                <button type="submit" class="btn btn-success btn-lg fw-bold shadow py-3" id="btn-save-config">
-                    <i class="bi bi-check2-circle fs-5 me-2"></i> Guardar Configuración
+            <!-- 7. Botón de Guardar Toda la Configuración (Color azul Steam .btn-sg-save, diferente a ejecutar) -->
+            <div>
+                <button type="submit" class="btn-sg-save w-100 justify-content-center" style="height: 42px; font-size: 0.92rem;" id="btn-save-config">
+                    <i class="bi bi-check2-circle fs-5 me-2"></i> Guardar Toda la Configuración
                 </button>
+                <div id="save-feedback" class="mt-2"></div>
             </div>
-            <div id="save-feedback" class="mb-4"></div>
+
         </div>
+
     </div>
 </form>
