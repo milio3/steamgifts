@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     """Configuración centralizada de la aplicación SteamGifts Bot."""
 
     PROJECT_NAME: str = "SteamGifts Bot"
-    VERSION: str = "1.0.0"
+    VERSION: str = "2.0.0"
     DEBUG: bool = False
     DATABASE_URL: str = "sqlite:///data/database.db"
     STEAMGIFTS_PHPSESSID: str = ""
