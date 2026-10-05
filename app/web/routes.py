@@ -33,6 +33,7 @@ router = APIRouter(tags=["Web"])
 
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 templates = Jinja2Templates(directory=templates_dir)
+templates.env.globals["app_version"] = settings.VERSION
 
 
 # ─── Vistas principales ──────────────────────────────────────────────

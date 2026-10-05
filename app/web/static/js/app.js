@@ -2,6 +2,7 @@
 
 let botStatusPollingInterval = null;
 let isBotCurrentlyRunning = false;
+let userTriggeredRun = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     initPasswordToggle();
@@ -165,9 +166,16 @@ async function checkBotStatus() {
             } else {
                 if (isBotCurrentlyRunning) {
                     // Ha terminado la ejecución
+                    const shouldOpenModal = userTriggeredRun;
+                    userTriggeredRun = false;
                     setBotIdleState();
                     triggerAllRefreshes();
-                    openLatestRunModal();
+                    if (shouldOpenModal) {
+                        openLatestRunModal();
+                        showToast('¡Ronda finalizada con éxito! Mostrando resumen.', 'success');
+                    } else {
+                        showToast('Ejecución finalizada.', 'info');
+                    }
                 }
             }
         }
@@ -203,6 +211,7 @@ function initRunBotForm() {
     const form = document.getElementById('run-bot-form');
     if (form) {
         form.addEventListener('htmx:beforeRequest', () => {
+            userTriggeredRun = true;
             setBotRunningState();
         });
         
@@ -212,6 +221,7 @@ function initRunBotForm() {
                 showToast('¡Ejecución iniciada! Procesando sorteos en segundo plano...', 'success');
                 triggerAllRefreshes();
             } else {
+                userTriggeredRun = false;
                 setBotIdleState();
                 showToast('Error al iniciar la ejecución del bot.', 'danger');
             }
@@ -339,23 +349,14 @@ function initGlobalStateWatcher() {
     document.body.addEventListener('htmx:afterSwap', (evt) => {
         if (evt.detail.target.id === 'console-logs') {
             const content = evt.detail.target.innerHTML || '';
-            const isCurrentlyRunning = content.includes('Ejecutando bot en segundo plano') || 
-                                       content.includes('INICIANDO EJECUCIÓN') ||
-                                       content.includes('Ejecución en curso');
+            const isCurrentlyRunning = content.includes('Ejecutando bot en segundo plano');
 
-            // Detectar fin de ejecución desde la consola
-            if (isBotCurrentlyRunning && !isCurrentlyRunning) {
-                setBotIdleState();
-                triggerAllRefreshes();
-                openLatestRunModal();
-            } else if (isCurrentlyRunning && !isBotCurrentlyRunning) {
+            // Sincronizar estado visual si el bot arrancó o terminó en segundo plano
+            if (isCurrentlyRunning && !isBotCurrentlyRunning) {
                 setBotRunningState();
-            }
-
-            if (content.includes('Ronda terminada:') && isBotCurrentlyRunning) {
+            } else if (!isCurrentlyRunning && isBotCurrentlyRunning && !userTriggeredRun) {
                 setBotIdleState();
                 triggerAllRefreshes();
-                openLatestRunModal();
             }
 
             // Detectar nuevos chequeos de puntos en la consola
