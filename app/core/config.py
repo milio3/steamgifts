@@ -23,7 +23,7 @@ class Settings(BaseSettings):
         "Chrome/126.0.0.0 Safari/537.36"
     )
     # Alertas de Telegram (Límite de puntos alcanzado)
-    TELEGRAM_ALERTS_ENABLED: bool = True
+    TELEGRAM_ALERTS_ENABLED: bool = False
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_CHAT_ID: str = ""
     TELEGRAM_POINTS_THRESHOLD: int = 400
