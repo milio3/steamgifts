@@ -62,9 +62,9 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Detener el chequeador al apagar la app
+    # Detener el hilo del chequeador al apagar la app sin desactivar su configuración en .env
     if points_checker.is_running:
-        points_checker.stop()
+        points_checker.shutdown()
     logger.info("Aplicación detenida")
 
 

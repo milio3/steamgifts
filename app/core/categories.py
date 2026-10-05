@@ -1,13 +1,10 @@
 """Gestión centralizada de categorías, prioridades y persistencia del orden."""
 
-import json
 import logging
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 logger = logging.getLogger(__name__)
-
-CONFIG_PATH = Path("data/bot_config.json")
 
 # Definición de las 7 categorías soportadas con sus metadatos e iconos SVG de Tailwind (Heroicons)
 AVAILABLE_CATEGORIES: Dict[str, dict] = {
@@ -85,20 +82,12 @@ DEFAULT_CATEGORY_ORDER: List[str] = [
 
 
 def load_categories_config() -> Tuple[List[str], Set[str]]:
-    """Carga el orden y las categorías habilitadas desde settings (.env) o bot_config.json."""
+    """Carga el orden y las categorías habilitadas exclusivamente desde settings (.env)."""
     from app.core.config import settings
 
     raw_order = None
     if getattr(settings, "CATEGORIES_ORDER", None):
         raw_order = [c.strip() for c in settings.CATEGORIES_ORDER.split(",") if c.strip()]
-
-    if not raw_order and CONFIG_PATH.exists():
-        try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                raw_order = data.get("categories_order", [])
-        except Exception as e:
-            logger.warning(f"No se pudo leer {CONFIG_PATH}, usando orden por defecto: {e}")
 
     if raw_order:
         # Normalizar si viniese 'Multiple Copies' con mayúsculas/espacios
@@ -118,7 +107,7 @@ def load_categories_config() -> Tuple[List[str], Set[str]]:
 
 
 def save_categories_config(order: List[str], enabled: List[str]) -> bool:
-    """Guarda el orden y categorías habilitadas en .env y en data/bot_config.json."""
+    """Guarda el orden y categorías habilitadas exclusivamente en .env."""
     norm_order = ["multiple_copies" if c in ("Multiple Copies", "multiple copies") else c for c in order]
     valid_order = []
     for c in norm_order:
@@ -129,30 +118,11 @@ def save_categories_config(order: List[str], enabled: List[str]) -> bool:
         if c not in valid_order:
             valid_order.append(c)
 
-    norm_enabled = ["multiple_copies" if c in ("Multiple Copies", "multiple copies") else c for c in enabled]
-    valid_enabled = [c for c in norm_enabled if c in AVAILABLE_CATEGORIES]
-
-    # 1. Persistir en .env
+    # Persistir exclusivamente en .env
     try:
         from app.core.config import update_settings_and_env
         update_settings_and_env({"CATEGORIES_ORDER": ",".join(valid_order)})
-    except Exception as e:
-        logger.error(f"Error guardando orden de categorías en .env: {e}")
-
-    # 2. Persistir en bot_config.json (retrocompatibilidad)
-    try:
-        CONFIG_PATH.parent.mkdir(exist_ok=True)
-        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-            json.dump(
-                {
-                    "categories_order": valid_order,
-                    "enabled_categories": valid_enabled,
-                },
-                f,
-                indent=2,
-                ensure_ascii=False,
-            )
         return True
     except Exception as e:
-        logger.error(f"Error guardando configuración de categorías en JSON: {e}")
+        logger.error(f"Error guardando orden de categorías en .env: {e}")
         return False

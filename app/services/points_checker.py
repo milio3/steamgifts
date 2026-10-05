@@ -1,20 +1,15 @@
 """Servicio de chequeo automático de puntos con jitter y restricción horaria nocturna."""
 
-import json
 import logging
 import random
 import threading
 import time
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 from app.core.config import settings, update_settings_and_env
-
-# Ruta del fichero de persistencia de la configuración del autochecker (retrocompatibilidad)
-_CONFIG_FILE = Path("data/autocheck_config.json")
 
 
 def _get_defaults_from_settings() -> dict:
@@ -31,13 +26,12 @@ def _get_defaults_from_settings() -> dict:
 
 
 def _load_config() -> dict:
-    """Carga la configuración del autochecker directamente desde settings (.env como fuente de verdad)."""
+    """Carga la configuración del autochecker directamente desde settings (.env como única fuente de verdad)."""
     return _get_defaults_from_settings()
 
 
 def _save_config(cfg: dict) -> None:
-    """Persiste la configuración del autochecker en .env y en JSON."""
-    # 1. Persistir en .env
+    """Persiste la configuración del autochecker exclusivamente en .env."""
     try:
         env_updates = {
             "AUTOCHECK_ENABLED": bool(cfg.get("enabled", True)),
@@ -51,14 +45,6 @@ def _save_config(cfg: dict) -> None:
         update_settings_and_env(env_updates)
     except Exception as e:
         logger.error(f"[AUTOCHECKER] Error persistiendo configuración en .env: {e}")
-
-    # 2. Persistir en fichero JSON local para compatibilidad
-    try:
-        _CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with open(_CONFIG_FILE, "w", encoding="utf-8") as f:
-            json.dump(cfg, f, indent=2, ensure_ascii=False)
-    except Exception as e:
-        logger.error(f"[AUTOCHECKER] Error guardando configuración en JSON: {e}")
 
 
 class PointsChecker:
@@ -89,14 +75,6 @@ class PointsChecker:
         self.autorun_enabled: bool = cfg["autorun_enabled"]
         self.autorun_min_points: int = cfg["autorun_min_points"]
 
-        # Sincronizar archivo JSON para que refleje la configuración activa de .env
-        try:
-            _CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-            with open(_CONFIG_FILE, "w", encoding="utf-8") as f:
-                json.dump(cfg, f, indent=2, ensure_ascii=False)
-        except Exception:
-            pass
-
     # ── Propiedades públicas ────────────────────────────────────────
 
     @property
@@ -126,8 +104,17 @@ class PointsChecker:
 
     # ── Control de ciclo de vida ────────────────────────────────────
 
+    def _stop_thread(self):
+        """Detiene la ejecución del hilo de chequeo."""
+        self._stop_event.set()
+        self._status = "detenido"
+        self._next_check = None
+        if self._thread:
+            self._thread.join(timeout=5)
+            self._thread = None
+
     def start(self):
-        """Inicia el hilo de chequeo periódico."""
+        """Inicia el hilo de chequeo periódico a petición del usuario."""
         if self.is_running:
             logger.info("[AUTOCHECKER] Ya está en ejecución, ignorando solicitud de inicio")
             return
@@ -139,16 +126,16 @@ class PointsChecker:
         logger.info("[AUTOCHECKER] ✅ Chequeador automático de puntos INICIADO")
 
     def stop(self):
-        """Detiene el hilo de chequeo periódico."""
+        """Detiene el chequeador a petición del usuario y desactiva el estado en .env."""
         self.enabled = False
-        self._stop_event.set()
-        self._status = "detenido"
-        self._next_check = None
-        if self._thread:
-            self._thread.join(timeout=5)
-            self._thread = None
+        self._stop_thread()
         self._persist()
-        logger.info("[AUTOCHECKER] ⏹ Chequeador automático de puntos DETENIDO")
+        logger.info("[AUTOCHECKER] ⏹ Chequeador automático de puntos DETENIDO por el usuario")
+
+    def shutdown(self):
+        """Detiene el hilo durante el apagado del servidor sin desactivar la configuración en .env."""
+        logger.info("[AUTOCHECKER] ⏹ Deteniendo hilo de chequeo por apagado de la aplicación...")
+        self._stop_thread()
 
     def update_config(self, **kwargs):
         """Actualiza la configuración del chequeador y la persiste con un log estructurado y amable."""
