@@ -1,13 +1,76 @@
 // app/web/static/js/app.js
 
+let botStatusPollingInterval = null;
+let isBotCurrentlyRunning = false;
+
 document.addEventListener('DOMContentLoaded', () => {
     initPasswordToggle();
     initRunBotForm();
     initConfigCategorySorting();
     initConsoleAutoScroll();
     initAutocheck();
+    initToastListener();
     initGlobalStateWatcher();
+    // Chequeo inicial de estado
+    checkBotStatus();
 });
+
+/**
+ * Muestra un Toast flotante moderno en la esquina inferior derecha
+ */
+function showToast(message, type = 'info') {
+    const toastEl = document.getElementById('appToast');
+    const toastMsg = document.getElementById('appToastMsg');
+    const toastIcon = document.getElementById('appToastIcon');
+    if (!toastEl || !toastMsg || !toastIcon) return;
+
+    toastMsg.textContent = message;
+
+    // Ajustar icono y color según el tipo
+    toastIcon.className = 'bi fs-6';
+    if (type === 'success') {
+        toastIcon.classList.add('bi-check-circle-fill', 'text-success');
+    } else if (type === 'warning') {
+        toastIcon.classList.add('bi-exclamation-triangle-fill', 'text-warning');
+    } else if (type === 'danger') {
+        toastIcon.classList.add('bi-x-circle-fill', 'text-danger');
+    } else {
+        toastIcon.classList.add('bi-info-circle-fill', 'text-info');
+    }
+
+    if (window.bootstrap && window.bootstrap.Toast) {
+        const toast = window.bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 4000 });
+        toast.show();
+    }
+}
+
+/**
+ * Escucha eventos HTMX o CustomEvents para mostrar toasts
+ */
+function initToastListener() {
+    document.body.addEventListener('showToast', (evt) => {
+        const detail = evt.detail || {};
+        showToast(detail.message || 'Notificación', detail.type || 'info');
+    });
+
+    // Detectar cabecera HX-Trigger en respuestas HTMX
+    document.body.addEventListener('htmx:afterOnLoad', (evt) => {
+        const xhr = evt.detail.xhr;
+        if (xhr) {
+            const triggerHeader = xhr.getResponseHeader('HX-Trigger');
+            if (triggerHeader) {
+                try {
+                    const parsed = JSON.parse(triggerHeader);
+                    if (parsed.showToast) {
+                        showToast(parsed.showToast.message, parsed.showToast.type);
+                    }
+                } catch (e) {
+                    // Si no es JSON estándar, ignorar
+                }
+            }
+        }
+    });
+}
 
 /**
  * Permite mostrar u ocultar el valor del PHPSESSID en la configuración
@@ -34,33 +97,123 @@ function initPasswordToggle() {
 }
 
 /**
- * Añade estado visual al lanzar el bot desde el Dashboard sin diálogos de confirmación
+ * Establece el estado visual del botón de lanzamiento como "En ejecución"
+ */
+function setBotRunningState() {
+    isBotCurrentlyRunning = true;
+    const btn = document.getElementById('btn-run-bot');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span><span>Ejecución en curso</span>';
+        btn.classList.add('btn-warning');
+    }
+    startBotStatusPolling();
+}
+
+/**
+ * Restablece el botón de lanzamiento a su estado original listo para ejecutar
+ */
+function setBotIdleState() {
+    isBotCurrentlyRunning = false;
+    const btn = document.getElementById('btn-run-bot');
+    if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('btn-warning');
+        btn.innerHTML = '<i class="bi bi-play-fill fs-5" style="line-height: 1;"></i><span>Iniciar Ejecución</span>';
+    }
+    stopBotStatusPolling();
+}
+
+/**
+ * Carga el modal de la última ejecución y lo abre (se cierra al pinchar fuera)
+ */
+async function openLatestRunModal() {
+    const modalBody = document.getElementById('runDetailModalBody');
+    const modalEl = document.getElementById('runDetailModal');
+    if (!modalEl || !modalBody) return;
+
+    try {
+        const resp = await fetch('/partials/runs/latest/modal');
+        if (resp.ok) {
+            const html = await resp.text();
+            modalBody.innerHTML = html;
+            if (window.bootstrap && window.bootstrap.Modal) {
+                const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl, {
+                    backdrop: true,
+                    keyboard: true
+                });
+                modal.show();
+            }
+        }
+    } catch (err) {
+        console.error('Error al cargar el modal de detalle:', err);
+    }
+}
+
+/**
+ * Consulta el estado actual del bot mediante la API
+ */
+async function checkBotStatus() {
+    try {
+        const resp = await fetch('/api/v1/bot/status');
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data.status === 'running') {
+                if (!isBotCurrentlyRunning) {
+                    setBotRunningState();
+                }
+            } else {
+                if (isBotCurrentlyRunning) {
+                    // Ha terminado la ejecución
+                    setBotIdleState();
+                    triggerAllRefreshes();
+                    openLatestRunModal();
+                }
+            }
+        }
+    } catch (e) {
+        // En caso de fallo de red puntual
+    }
+}
+
+/**
+ * Inicia el polling activo mientras el bot está corriendo
+ */
+function startBotStatusPolling() {
+    if (botStatusPollingInterval) return;
+    botStatusPollingInterval = setInterval(() => {
+        checkBotStatus();
+    }, 1500);
+}
+
+/**
+ * Detiene el polling de estado
+ */
+function stopBotStatusPolling() {
+    if (botStatusPollingInterval) {
+        clearInterval(botStatusPollingInterval);
+        botStatusPollingInterval = null;
+    }
+}
+
+/**
+ * Añade estado visual al lanzar el bot desde el Dashboard
  */
 function initRunBotForm() {
     const form = document.getElementById('run-bot-form');
     if (form) {
         form.addEventListener('htmx:beforeRequest', () => {
-            const btn = document.getElementById('btn-run-bot');
-            if (btn) {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Iniciando...';
-            }
+            setBotRunningState();
         });
         
         form.addEventListener('htmx:afterRequest', (e) => {
-            const btn = document.getElementById('btn-run-bot');
-            if (btn) {
-                if (e.detail.successful) {
-                    btn.innerHTML = '<i class="bi bi-arrow-repeat spin me-2"></i> Ejecución en curso';
-                    btn.classList.add('btn-warning');
-                    // Refrescar paneles de dashboard
-                    triggerAllRefreshes();
-                } else {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-play-fill fs-5 me-1"></i> Iniciar Ejecución';
-                    btn.classList.remove('btn-warning');
-                    alert('Error al iniciar el bot.');
-                }
+            if (e.detail.successful) {
+                // Notificación mediante Toast
+                showToast('¡Ejecución iniciada! Procesando sorteos en segundo plano...', 'success');
+                triggerAllRefreshes();
+            } else {
+                setBotIdleState();
+                showToast('Error al iniciar la ejecución del bot.', 'danger');
             }
         });
     }
@@ -181,7 +334,6 @@ function triggerAllRefreshes() {
  * Observador global de estado: vigila el fin de ejecuciones y chequeos para actualizar la página automáticamente
  */
 function initGlobalStateWatcher() {
-    let wasBotRunning = false;
     let lastSeenCheckHash = '';
 
     document.body.addEventListener('htmx:afterSwap', (evt) => {
@@ -191,26 +343,19 @@ function initGlobalStateWatcher() {
                                        content.includes('INICIANDO EJECUCIÓN') ||
                                        content.includes('Ejecución en curso');
 
-            // Detectar fin de ejecución (pasó de corriendo a finalizado)
-            if (wasBotRunning && !isCurrentlyRunning) {
-                wasBotRunning = false;
+            // Detectar fin de ejecución desde la consola
+            if (isBotCurrentlyRunning && !isCurrentlyRunning) {
+                setBotIdleState();
                 triggerAllRefreshes();
-
-                // Restaurar botón de ejecución
-                const btnRun = document.getElementById('btn-run-bot');
-                if (btnRun) {
-                    btnRun.disabled = false;
-                    btnRun.innerHTML = '<i class="bi bi-play-fill fs-5" style="line-height: 1;"></i><span>Iniciar Ejecución</span>';
-                    btnRun.classList.remove('btn-warning');
-                }
-            } else if (isCurrentlyRunning) {
-                wasBotRunning = true;
+                openLatestRunModal();
+            } else if (isCurrentlyRunning && !isBotCurrentlyRunning) {
+                setBotRunningState();
             }
 
-            // Detectar si terminó una ronda o hubo éxito
-            if (content.includes('Ronda terminada:') && wasBotRunning) {
-                wasBotRunning = false;
+            if (content.includes('Ronda terminada:') && isBotCurrentlyRunning) {
+                setBotIdleState();
                 triggerAllRefreshes();
+                openLatestRunModal();
             }
 
             // Detectar nuevos chequeos de puntos en la consola
@@ -236,26 +381,6 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
     if (evt.detail.target.id === 'configModalContent') {
         initPasswordToggle();
         initConfigCategorySorting();
-    }
-
-    // Si se actualizó el status del bot
-    if (evt.detail.target.id === 'bot-status-container') {
-        const isRunning = evt.detail.target.innerHTML.includes('status-pill-running') || 
-                          evt.detail.target.innerHTML.includes('Bot en ejecución');
-        const btnRun = document.getElementById('btn-run-bot');
-
-        if (btnRun) {
-            if (isRunning) {
-                btnRun.disabled = true;
-                btnRun.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Bot en ejecución...';
-                btnRun.classList.remove('btn-primary');
-                btnRun.classList.add('btn-warning');
-            } else if (!btnRun.innerHTML.includes('Iniciando')) {
-                btnRun.disabled = false;
-                btnRun.innerHTML = '<i class="bi bi-play-fill fs-5" style="line-height: 1;"></i><span>Iniciar Ejecución</span>';
-                btnRun.classList.remove('btn-warning');
-            }
-        }
     }
 });
 

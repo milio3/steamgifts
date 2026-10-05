@@ -74,7 +74,7 @@
                     </div>
 
                     <!-- Botón Iniciar Ejecución Verde Steam -->
-                    <form id="run-bot-form" hx-post="/partials/run-bot" hx-target="#run-feedback" hx-swap="innerHTML" class="m-0">
+                    <form id="run-bot-form" hx-post="/partials/run-bot" hx-swap="none" class="m-0">
                         <button type="submit" 
                                 class="btn btn-sg-enter" 
                                 id="btn-run-bot"
@@ -88,18 +88,26 @@
         </div>
     </nav>
 
-    <!-- Feedback global de ejecución -->
-    <div class="sg-container mt-2">
-        <div id="run-feedback"></div>
-    </div>
-
     <!-- Main Content en Contenedor Amigable Centrado (1240px) -->
     <main class="sg-container my-3">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Modal Global: Detalle de Ejecución -->
-    <div class="modal fade" id="runDetailModal" tabindex="-1" aria-labelledby="runDetailModalLabel" aria-hidden="true">
+    <!-- Toast Notificaciones Flotante (Abajo a la derecha) -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
+        <div id="appToast" class="toast align-items-center text-white border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true" style="background-color: #17212b; border: 1px solid #2a475e !important;">
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center gap-2 py-2 px-3 small" id="appToastBody">
+                    <i class="bi bi-info-circle-fill text-info fs-6" id="appToastIcon"></i>
+                    <span id="appToastMsg">Mensaje del sistema</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Global: Detalle de Ejecución (se cierra al hacer clic fuera) -->
+    <div class="modal fade" id="runDetailModal" tabindex="-1" aria-labelledby="runDetailModalLabel" aria-hidden="true" data-bs-backdrop="true" data-bs-keyboard="true">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content modal-content-sg border-0" id="runDetailModalBody">
                 <div class="p-5 text-center text-muted">

@@ -491,6 +491,25 @@ async def partial_tabla_ejecuciones(
     )
 
 
+@router.get("/partials/runs/latest/modal", response_class=HTMLResponse)
+async def partial_modal_ultima_ejecucion(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Fragmento HTML con el contenido completo del modal para la última ejecución realizada."""
+    run = db.query(RunLog).order_by(RunLog.started_at.desc()).first()
+    if not run:
+        return HTMLResponse(
+            "<div class='p-4 text-center text-muted'>No hay registros de ejecuciones todavía.</div>"
+        )
+    entries = db.query(Entry).filter(Entry.run_id == run.id).order_by(Entry.timestamp.asc()).all()
+    return templates.TemplateResponse(
+        request=request,
+        name="components/run_detail_modal.html",
+        context={"run": run, "entries": entries},
+    )
+
+
 @router.get("/partials/runs/{run_id}/modal", response_class=HTMLResponse)
 async def partial_modal_ejecucion(
     request: Request,
@@ -548,23 +567,22 @@ async def partial_ejecutar_bot_formulario(
 ):
     """Lanza la ejecución del bot en segundo plano con las categorías configuradas."""
     if getattr(main_app, "is_bot_running", False):
-        return HTMLResponse(
-            "<div class='alert alert-warning py-2 mb-0 small'><i class='bi bi-exclamation-triangle'></i> El bot ya está en ejecución.</div>"
-        )
+        resp = HTMLResponse("")
+        resp.headers["HX-Trigger"] = '{"showToast": {"message": "El bot ya está ejecutándose en segundo plano.", "type": "warning"}}'
+        return resp
 
     if not settings.STEAMGIFTS_PHPSESSID:
-        return HTMLResponse(
-            "<div class='alert alert-danger py-2 mb-0 small'><i class='bi bi-x-circle'></i> Cookie PHPSESSID no configurada. Ve a <a href='/config' class='alert-link'>Configuración</a> para ingresarla.</div>"
-        )
+        resp = HTMLResponse("")
+        resp.headers["HX-Trigger"] = '{"showToast": {"message": "Cookie PHPSESSID no configurada. Ve a Configuración.", "type": "danger"}}'
+        return resp
 
     order, _ = load_categories_config()
     background_tasks.add_task(_ejecutar_bot_en_segundo_plano, order)
-    resp = HTMLResponse(
-        "<div class='alert alert-success py-2 mb-0 small animate-fade'>"
-        "<i class='bi bi-check-circle me-1'></i> ¡Ejecución iniciada! Sigue el progreso en tiempo real en la consola."
-        "</div>"
+    resp = HTMLResponse("")
+    resp.headers["HX-Trigger"] = (
+        '{"showToast": {"message": "¡Ejecución iniciada! Procesando sorteos en segundo plano...", "type": "success"}, '
+        '"refreshStats": true, "refreshSessions": true, "refreshAccount": true}'
     )
-    resp.headers["HX-Trigger"] = '{"refreshStats": true, "refreshSessions": true, "refreshAccount": true}'
     return resp
 
 
