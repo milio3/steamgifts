@@ -35,7 +35,7 @@ AVAILABLE_CATEGORIES: Dict[str, dict] = {
         "icon": "bi-people-fill",
         "svg_icon": '<svg class="tailwind-svg-icon" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M4.5 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM14.25 8.625a3.375 3.375 0 1 1 6.75 0 3.375 3.375 0 0 1-6.75 0ZM1.5 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.633 13.067 13.067 0 0 1-6.761 1.87 13.067 13.067 0 0 1-6.76-1.87.75.75 0 0 1-.364-.633l-.001-.122ZM17.25 19.128l-.001.144a2.25 2.25 0 0 1-.233.96 10.088 10.088 0 0 0 5.06-1.604.75.75 0 0 0 .424-.658v-.108a5.625 5.625 0 0 0-5.25-5.612v6.878Z" /></svg>',
     },
-    "Multiple Copies": {
+    "multiple_copies": {
         "name": "Multiple Copies",
         "label": "Multiple Copies",
         "url": "/giveaways/search?copy_min=2",
@@ -69,15 +69,15 @@ AVAILABLE_CATEGORIES: Dict[str, dict] = {
     },
 }
 
-# Alias para compatibilidad con CLI y llamadas legacy
-AVAILABLE_CATEGORIES["multiple_copies"] = AVAILABLE_CATEGORIES["Multiple Copies"]
+# Alias para compatibilidad con llamadas que usen la variante con mayúsculas y espacios
+AVAILABLE_CATEGORIES["Multiple Copies"] = AVAILABLE_CATEGORIES["multiple_copies"]
 
 # Orden inicial por defecto especificado por el usuario (1 a 7)
 DEFAULT_CATEGORY_ORDER: List[str] = [
     "wishlist",
     "dlc",
     "group",
-    "Multiple Copies",
+    "multiple_copies",
     "recommended",
     "new",
     "all",
@@ -101,14 +101,17 @@ def load_categories_config() -> Tuple[List[str], Set[str]]:
             logger.warning(f"No se pudo leer {CONFIG_PATH}, usando orden por defecto: {e}")
 
     if raw_order:
-        # Normalizar si viniese 'multiple_copies' antiguo
-        order = ["Multiple Copies" if c == "multiple_copies" else c for c in raw_order]
-        valid_order = [c for c in order if c in AVAILABLE_CATEGORIES]
-        enabled = set(valid_order)
+        # Normalizar si viniese 'Multiple Copies' con mayúsculas/espacios
+        order = ["multiple_copies" if c in ("Multiple Copies", "multiple copies") else c for c in raw_order]
+        # Filtrar categorías válidas eliminando duplicados preservando orden
+        valid_order = []
+        for c in order:
+            if c in AVAILABLE_CATEGORIES and c not in valid_order:
+                valid_order.append(c)
         for c in DEFAULT_CATEGORY_ORDER:
             if c not in valid_order:
                 valid_order.append(c)
-                enabled.add(c)
+        enabled = set(valid_order)
         return valid_order, enabled
 
     return list(DEFAULT_CATEGORY_ORDER), set(DEFAULT_CATEGORY_ORDER)
@@ -116,12 +119,18 @@ def load_categories_config() -> Tuple[List[str], Set[str]]:
 
 def save_categories_config(order: List[str], enabled: List[str]) -> bool:
     """Guarda el orden y categorías habilitadas en .env y en data/bot_config.json."""
-    valid_order = [c for c in order if c in AVAILABLE_CATEGORIES]
+    norm_order = ["multiple_copies" if c in ("Multiple Copies", "multiple copies") else c for c in order]
+    valid_order = []
+    for c in norm_order:
+        if c in AVAILABLE_CATEGORIES and c not in valid_order:
+            valid_order.append(c)
+
     for c in DEFAULT_CATEGORY_ORDER:
         if c not in valid_order:
             valid_order.append(c)
 
-    valid_enabled = [c for c in enabled if c in AVAILABLE_CATEGORIES]
+    norm_enabled = ["multiple_copies" if c in ("Multiple Copies", "multiple copies") else c for c in enabled]
+    valid_enabled = [c for c in norm_enabled if c in AVAILABLE_CATEGORIES]
 
     # 1. Persistir en .env
     try:

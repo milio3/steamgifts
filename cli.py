@@ -245,7 +245,7 @@ def ejecutar_bot(categories=None, max_entries=None):
         settings.MAX_ENTRIES_PER_RUN = max_entries
 
     if categories:
-        categories = ["Multiple Copies" if c == "multiple_copies" else c for c in categories]
+        categories = ["multiple_copies" if c in ("Multiple Copies", "multiple_copies", "multiple copies") else c for c in categories]
 
     db = SessionLocal()
     try:

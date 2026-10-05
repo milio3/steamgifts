@@ -464,9 +464,13 @@ async def partial_tabla_entradas(
     if search and search.strip():
         query = query.filter(Entry.game_name.ilike(f"%{search.strip()}%"))
 
-    # Filtro por categoría
+    # Filtro por categoría (soporte transparente para múltiples copias)
     if category and category.strip():
-        query = query.filter(Entry.category == category.strip())
+        cat_clean = category.strip()
+        if cat_clean in ("multiple_copies", "Multiple Copies"):
+            query = query.filter(Entry.category.in_(["multiple_copies", "Multiple Copies"]))
+        else:
+            query = query.filter(Entry.category == cat_clean)
 
     # Filtro por sesión de ejecución si se especifica
     if run_id:

@@ -152,23 +152,36 @@ class PointsChecker:
         logger.info("[AUTOCHECKER] ⏹ Chequeador automático de puntos DETENIDO")
 
     def update_config(self, **kwargs):
-        """Actualiza la configuración del chequeador y la persiste."""
-        mensajes = []
+        """Actualiza la configuración del chequeador y la persiste con un log estructurado y amable."""
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
-                if key == "autorun_enabled":
-                    estado = "Activada" if value else "Desactivada"
-                    mensajes.append(f"Auto-ejecución: {estado}")
-                elif key == "autorun_min_points":
-                    mensajes.append(f"Umbral: {value} P")
-                elif key in ("min_interval", "max_interval"):
-                    mensajes.append(f"Intervalo {key}: {value} min")
-                else:
-                    mensajes.append(f"{key}: {value}")
         self._persist()
-        if mensajes:
-            logger.info("⚙️ [AUTOCHECKER] " + " | ".join(mensajes))
+
+        # Generar mensaje amigable y limpio
+        partes = []
+        if "enabled" in kwargs:
+            estado = "Activado" if self.enabled else "Desactivado"
+            partes.append(f"Chequeo: {estado}")
+
+        if "min_interval" in kwargs or "max_interval" in kwargs:
+            partes.append(f"Intervalo: {self.min_interval}-{self.max_interval} min")
+
+        if "night_start" in kwargs or "night_end" in kwargs:
+            partes.append(f"Pausa nocturna: {self.night_start:02d}:00 - {self.night_end:02d}:00 h")
+
+        if "autorun_enabled" in kwargs or "autorun_min_points" in kwargs:
+            if self.autorun_enabled:
+                partes.append(f"Auto-ejecución: Activada (≥{self.autorun_min_points} P)")
+            else:
+                partes.append("Auto-ejecución: Desactivada")
+
+        if not partes:
+            for k, v in kwargs.items():
+                partes.append(f"{k}: {v}")
+
+        if partes:
+            logger.info("⚙️ [AUTOCHECKER] " + " │ ".join(partes))
 
     def _persist(self):
         """Guarda la configuración actual en disco."""

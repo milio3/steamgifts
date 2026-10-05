@@ -1,13 +1,23 @@
+"""Configuración centralizada y gestión de variables de entorno de SteamGifts Bot."""
+
 import os
+from pathlib import Path
+from typing import Any, Dict
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Rutas estándar de los ficheros de entorno
+ENV_DESA_PATH = Path(".env.desa")
+ENV_PROD_PATH = Path(".env")
+ACTIVE_ENV_PATH = ENV_DESA_PATH if ENV_DESA_PATH.exists() else ENV_PROD_PATH
+
 
 class Settings(BaseSettings):
-    """Configuración centralizada de la aplicación SteamGifts Bot."""
+    """Configuración centralizada de la aplicación con validación de tipos Pydantic."""
 
     PROJECT_NAME: str = "SteamGifts Bot"
-    VERSION: str = "2.2.0"
+    VERSION: str = "2.2.1"
     PORT: int = 8090
     DEBUG: bool = False
     DATABASE_URL: str = "sqlite:///data/database.db"
@@ -23,6 +33,7 @@ class Settings(BaseSettings):
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/126.0.0.0 Safari/537.36"
     )
+
     # Alertas de Telegram (Límite de puntos alcanzado)
     TELEGRAM_ALERTS_ENABLED: bool = False
     TELEGRAM_BOT_TOKEN: str = ""
@@ -38,8 +49,8 @@ class Settings(BaseSettings):
     AUTOCHECK_AUTORUN_ENABLED: bool = True
     AUTOCHECK_AUTORUN_MIN_POINTS: int = 380
 
-    # Prioridad y orden de categorías (separadas por coma)
-    CATEGORIES_ORDER: str = "wishlist,dlc,group,Multiple Copies,recommended,new,all"
+    # Prioridad y orden de categorías (separadas por coma, formato canónico en minúsculas)
+    CATEGORIES_ORDER: str = "wishlist,dlc,group,multiple_copies,recommended,new,all"
 
     @field_validator("DATABASE_URL", mode="after")
     @classmethod
@@ -56,76 +67,79 @@ class Settings(BaseSettings):
     )
 
 
-from pathlib import Path
+def _formatear_linea_env(key: str, val: Any) -> str:
+    """Devuelve una línea formateada adecuadamente para archivos .env."""
+    if isinstance(val, bool):
+        return f"{key}={str(val).lower()}\n"
+    elif isinstance(val, str) and not (val.startswith('"') and val.endswith('"')):
+        return f'{key}="{val}"\n'
+    return f"{key}={val}\n"
 
-ACTIVE_ENV_PATH = Path(".env.desa") if Path(".env.desa").exists() else Path(".env")
+
+def _es_cookie_invalida(cookie: str) -> bool:
+    """Comprueba si el valor de cookie no debe persistirse por ser ficticio o inválido."""
+    c = cookie.strip().strip('"').strip("'")
+    return not c or "•" in c or any(pat in c.lower() for pat in ("testcookie", "cookie_test", "dummy"))
 
 
-def update_settings_and_env(updates: dict) -> bool:
-    """Actualiza los parámetros en el objeto settings y los persiste en .env.desa y .env."""
-    # Protección estricta: nunca sobrescribir STEAMGIFTS_PHPSESSID con valores ficticios de tests o vacíos
-    if "STEAMGIFTS_PHPSESSID" in updates:
-        val_cookie = str(updates["STEAMGIFTS_PHPSESSID"]).strip().strip('"').strip("'")
-        if (
-            not val_cookie
-            or "•" in val_cookie
-            or "testcookie" in val_cookie.lower()
-            or "cookie_test" in val_cookie.lower()
-            or "dummy" in val_cookie.lower()
-        ):
-            del updates["STEAMGIFTS_PHPSESSID"]
+def _actualizar_archivo_env(env_path: Path, updates: Dict[str, Any]) -> None:
+    """Actualiza o inserta las variables especificadas en el archivo .env indicado respetando comentarios."""
+    env_lines = []
+    if env_path.exists():
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                env_lines = f.readlines()
+        except Exception:
+            pass
 
+    applied_keys = set()
+    new_lines = []
+
+    for line in env_lines:
+        line_clean = line.strip()
+        if "=" in line_clean and not line_clean.startswith("#"):
+            key = line_clean.split("=", 1)[0].strip()
+            if key in updates:
+                new_lines.append(_formatear_linea_env(key, updates[key]))
+                applied_keys.add(key)
+                continue
+        new_lines.append(line)
+
+    # Claves nuevas que no existían previamente en el archivo
+    for key, val in updates.items():
+        if key not in applied_keys:
+            new_lines.append(_formatear_linea_env(key, val))
+
+    try:
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.writelines(new_lines)
+    except Exception:
+        pass
+
+
+def update_settings_and_env(updates: Dict[str, Any]) -> bool:
+    """Actualiza los parámetros en la instancia global settings y los persiste en disco (.env y .env.desa)."""
+    # Filtrar cookies inválidas o ficticias
+    if "STEAMGIFTS_PHPSESSID" in updates and _es_cookie_invalida(str(updates["STEAMGIFTS_PHPSESSID"])):
+        del updates["STEAMGIFTS_PHPSESSID"]
+
+    # Determinar ficheros de destino
     if str(ACTIVE_ENV_PATH).endswith(".test"):
         target_files = [ACTIVE_ENV_PATH]
     else:
         target_files = []
-        if Path(".env.desa").exists():
-            target_files.append(Path(".env.desa"))
-        if Path(".env").exists():
-            target_files.append(Path(".env"))
+        if ENV_DESA_PATH.exists():
+            target_files.append(ENV_DESA_PATH)
+        if ENV_PROD_PATH.exists():
+            target_files.append(ENV_PROD_PATH)
         if not target_files:
             target_files.append(ACTIVE_ENV_PATH)
 
-    def _formatear_linea(k: str, v) -> str:
-        if isinstance(v, bool):
-            return f"{k}={str(v).lower()}\n"
-        elif isinstance(v, str) and not (v.startswith('"') and v.endswith('"')):
-            return f'{k}="{v}"\n'
-        else:
-            return f"{k}={v}\n"
-
+    # Persistir en todos los ficheros destino
     for env_path in target_files:
-        env_lines = []
-        if env_path.exists():
-            try:
-                with open(env_path, "r", encoding="utf-8") as f:
-                    env_lines = f.readlines()
-            except Exception:
-                pass
+        _actualizar_archivo_env(env_path, updates)
 
-        applied_keys = set()
-        new_lines = []
-        for line in env_lines:
-            line_clean = line.strip()
-            if "=" in line_clean and not line_clean.startswith("#"):
-                key = line_clean.split("=")[0].strip()
-                if key in updates:
-                    val = updates[key]
-                    new_lines.append(_formatear_linea(key, val))
-                    applied_keys.add(key)
-                    continue
-            new_lines.append(line)
-
-        for key, val in updates.items():
-            if key not in applied_keys:
-                new_lines.append(_formatear_linea(key, val))
-
-        try:
-            with open(env_path, "w", encoding="utf-8") as f:
-                f.writelines(new_lines)
-        except Exception:
-            pass
-
+    # Actualizar valores en la instancia en memoria
     for k, v in updates.items():
         if hasattr(settings, k):
             curr_val = getattr(settings, k)
@@ -145,33 +159,5 @@ def update_settings_and_env(updates: dict) -> bool:
     return True
 
 
-def _inicializar_settings() -> Settings:
-    """Inicializa Settings priorizando los valores de .env.desa si existe."""
-    s = Settings()
-    desa = Path(".env.desa")
-    if desa.exists():
-        try:
-            with open(desa, "r", encoding="utf-8") as f:
-                for line in f:
-                    line_s = line.strip()
-                    if line_s and not line_s.startswith("#") and "=" in line_s:
-                        k, v = line_s.split("=", 1)
-                        k = k.strip()
-                        v = v.strip().strip('"').strip("'")
-                        if hasattr(s, k) and v:
-                            curr = getattr(s, k)
-                            if isinstance(curr, bool):
-                                setattr(s, k, v.lower() in ("true", "1", "yes"))
-                            elif isinstance(curr, int):
-                                setattr(s, k, int(v))
-                            elif isinstance(curr, float):
-                                setattr(s, k, float(v))
-                            else:
-                                setattr(s, k, v)
-        except Exception:
-            pass
-    return s
-
-
-settings = _inicializar_settings()
-
+# Instancia única global de configuración
+settings = Settings()
