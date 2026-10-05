@@ -3,12 +3,12 @@
     <!-- Cabecera de estado principal -->
     <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom" style="border-color: #2a475e !important;">
         <div class="d-flex align-items-center gap-2">
-            {% if checker.enabled and checker.running %}
-                <span class="autocheck-dot autocheck-dot-active"></span>
-                <span class="fw-bold small" style="color: #96b847;">Chequeo Activo</span>
-            {% elif checker.enabled and 'pausado' in (checker.status or '') %}
+            {% if checker.enabled and 'pausado' in (checker.status or '') %}
                 <span class="autocheck-dot autocheck-dot-paused"></span>
                 <span class="fw-bold small text-warning">Pausado (Noche España)</span>
+            {% elif checker.enabled and checker.running %}
+                <span class="autocheck-dot autocheck-dot-active"></span>
+                <span class="fw-bold small" style="color: #96b847;">Chequeo Activo</span>
             {% else %}
                 <span class="autocheck-dot autocheck-dot-idle"></span>
                 <span class="fw-semibold small text-muted">Chequeo Inactivo</span>

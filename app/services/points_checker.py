@@ -31,17 +31,8 @@ def _get_defaults_from_settings() -> dict:
 
 
 def _load_config() -> dict:
-    """Carga la configuración del autochecker desde settings (.env) y JSON."""
-    cfg = _get_defaults_from_settings()
-    try:
-        if _CONFIG_FILE.exists():
-            with open(_CONFIG_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            # Incorporar claves de data si proceden
-            cfg.update({k: data[k] for k in cfg if k in data})
-    except Exception as e:
-        logger.warning(f"[AUTOCHECKER] Error cargando configuración desde JSON: {e}")
-    return cfg
+    """Carga la configuración del autochecker directamente desde settings (.env como fuente de verdad)."""
+    return _get_defaults_from_settings()
 
 
 def _save_config(cfg: dict) -> None:
@@ -97,6 +88,14 @@ class PointsChecker:
         self.night_end: int = cfg["night_end"]
         self.autorun_enabled: bool = cfg["autorun_enabled"]
         self.autorun_min_points: int = cfg["autorun_min_points"]
+
+        # Sincronizar archivo JSON para que refleje la configuración activa de .env
+        try:
+            _CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with open(_CONFIG_FILE, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
 
     # ── Propiedades públicas ────────────────────────────────────────
 
