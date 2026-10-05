@@ -28,6 +28,18 @@ class Settings(BaseSettings):
     TELEGRAM_CHAT_ID: str = ""
     TELEGRAM_POINTS_THRESHOLD: int = 400
 
+    # Chequeo automático de puntos y auto-ejecución
+    AUTOCHECK_ENABLED: bool = True
+    AUTOCHECK_MIN_INTERVAL: int = 60
+    AUTOCHECK_MAX_INTERVAL: int = 120
+    AUTOCHECK_NIGHT_START: int = 1
+    AUTOCHECK_NIGHT_END: int = 9
+    AUTOCHECK_AUTORUN_ENABLED: bool = True
+    AUTOCHECK_AUTORUN_MIN_POINTS: int = 380
+
+    # Prioridad y orden de categorías (separadas por coma)
+    CATEGORIES_ORDER: str = "wishlist,dlc,group,Multiple Copies,recommended,new,all"
+
     @field_validator("DATABASE_URL", mode="after")
     @classmethod
     def normalizar_database_url(cls, v: str) -> str:
@@ -73,11 +85,22 @@ def update_settings_and_env(updates: dict) -> bool:
         if not target_files:
             target_files.append(ACTIVE_ENV_PATH)
 
+    def _formatear_linea(k: str, v) -> str:
+        if isinstance(v, bool):
+            return f"{k}={str(v).lower()}\n"
+        elif isinstance(v, str) and not (v.startswith('"') and v.endswith('"')):
+            return f'{k}="{v}"\n'
+        else:
+            return f"{k}={v}\n"
+
     for env_path in target_files:
         env_lines = []
         if env_path.exists():
-            with open(env_path, "r", encoding="utf-8") as f:
-                env_lines = f.readlines()
+            try:
+                with open(env_path, "r", encoding="utf-8") as f:
+                    env_lines = f.readlines()
+            except Exception:
+                pass
 
         applied_keys = set()
         new_lines = []
@@ -87,32 +110,37 @@ def update_settings_and_env(updates: dict) -> bool:
                 key = line_clean.split("=")[0].strip()
                 if key in updates:
                     val = updates[key]
-                    if isinstance(val, str) and not (val.startswith('"') and val.endswith('"')):
-                        new_lines.append(f'{key}="{val}"\n')
-                    else:
-                        new_lines.append(f"{key}={val}\n")
+                    new_lines.append(_formatear_linea(key, val))
                     applied_keys.add(key)
                     continue
             new_lines.append(line)
 
         for key, val in updates.items():
             if key not in applied_keys:
-                if isinstance(val, str) and not (val.startswith('"') and val.endswith('"')):
-                    new_lines.append(f'{key}="{val}"\n')
-                else:
-                    new_lines.append(f"{key}={val}\n")
+                new_lines.append(_formatear_linea(key, val))
 
-        with open(env_path, "w", encoding="utf-8") as f:
-            f.writelines(new_lines)
+        try:
+            with open(env_path, "w", encoding="utf-8") as f:
+                f.writelines(new_lines)
+        except Exception:
+            pass
 
     for k, v in updates.items():
         if hasattr(settings, k):
             curr_val = getattr(settings, k)
-            target_type = type(curr_val) if curr_val is not None else str
-            try:
-                setattr(settings, k, target_type(v))
-            except Exception:
-                setattr(settings, k, v)
+            if isinstance(curr_val, bool):
+                if isinstance(v, bool):
+                    setattr(settings, k, v)
+                elif isinstance(v, str):
+                    setattr(settings, k, v.lower() in ("true", "1", "yes"))
+                else:
+                    setattr(settings, k, bool(v))
+            else:
+                target_type = type(curr_val) if curr_val is not None else str
+                try:
+                    setattr(settings, k, target_type(v))
+                except Exception:
+                    setattr(settings, k, v)
     return True
 
 

@@ -11,6 +11,7 @@ services:
       - .env
     volumes:
       - ${DATA_PATH:-/mnt/dietpi_userdata/apps/steamgifts/data}:/app/data
+      - ./.env:/app/.env
     deploy:
       resources:
         limits:

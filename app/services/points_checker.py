@@ -11,43 +11,63 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Ruta del fichero de persistencia de la configuración del autochecker
+from app.core.config import settings, update_settings_and_env
+
+# Ruta del fichero de persistencia de la configuración del autochecker (retrocompatibilidad)
 _CONFIG_FILE = Path("data/autocheck_config.json")
 
-# Valores por defecto (activos tras cualquier despliegue o primera inicialización)
-_DEFAULTS = {
-    "enabled": True,
-    "min_interval": 60,
-    "max_interval": 120,
-    "night_start": 1,
-    "night_end": 9,
-    "autorun_enabled": True,
-    "autorun_min_points": 380,
-}
+
+def _get_defaults_from_settings() -> dict:
+    """Devuelve los valores de configuración configurados en settings (.env)."""
+    return {
+        "enabled": getattr(settings, "AUTOCHECK_ENABLED", True),
+        "min_interval": getattr(settings, "AUTOCHECK_MIN_INTERVAL", 60),
+        "max_interval": getattr(settings, "AUTOCHECK_MAX_INTERVAL", 120),
+        "night_start": getattr(settings, "AUTOCHECK_NIGHT_START", 1),
+        "night_end": getattr(settings, "AUTOCHECK_NIGHT_END", 9),
+        "autorun_enabled": getattr(settings, "AUTOCHECK_AUTORUN_ENABLED", True),
+        "autorun_min_points": getattr(settings, "AUTOCHECK_AUTORUN_MIN_POINTS", 380),
+    }
 
 
 def _load_config() -> dict:
-    """Carga la configuración del autochecker desde disco, o devuelve los valores por defecto."""
+    """Carga la configuración del autochecker desde settings (.env) y JSON."""
+    cfg = _get_defaults_from_settings()
     try:
         if _CONFIG_FILE.exists():
             with open(_CONFIG_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            # Merge con defaults para campos nuevos
-            merged = {**_DEFAULTS, **data}
-            return merged
+            # Incorporar claves de data si proceden
+            cfg.update({k: data[k] for k in cfg if k in data})
     except Exception as e:
-        logger.warning(f"[AUTOCHECKER] Error cargando configuración: {e}. Usando valores por defecto.")
-    return dict(_DEFAULTS)
+        logger.warning(f"[AUTOCHECKER] Error cargando configuración desde JSON: {e}")
+    return cfg
 
 
 def _save_config(cfg: dict) -> None:
-    """Persiste la configuración del autochecker en disco."""
+    """Persiste la configuración del autochecker en .env y en JSON."""
+    # 1. Persistir en .env
+    try:
+        env_updates = {
+            "AUTOCHECK_ENABLED": bool(cfg.get("enabled", True)),
+            "AUTOCHECK_MIN_INTERVAL": int(cfg.get("min_interval", 60)),
+            "AUTOCHECK_MAX_INTERVAL": int(cfg.get("max_interval", 120)),
+            "AUTOCHECK_NIGHT_START": int(cfg.get("night_start", 1)),
+            "AUTOCHECK_NIGHT_END": int(cfg.get("night_end", 9)),
+            "AUTOCHECK_AUTORUN_ENABLED": bool(cfg.get("autorun_enabled", True)),
+            "AUTOCHECK_AUTORUN_MIN_POINTS": int(cfg.get("autorun_min_points", 380)),
+        }
+        update_settings_and_env(env_updates)
+    except Exception as e:
+        logger.error(f"[AUTOCHECKER] Error persistiendo configuración en .env: {e}")
+
+    # 2. Persistir en fichero JSON local para compatibilidad
     try:
         _CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(_CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(cfg, f, indent=2, ensure_ascii=False)
     except Exception as e:
-        logger.error(f"[AUTOCHECKER] Error guardando configuración: {e}")
+        logger.error(f"[AUTOCHECKER] Error guardando configuración en JSON: {e}")
 
 
 class PointsChecker:

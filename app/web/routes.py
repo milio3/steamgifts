@@ -374,32 +374,56 @@ async def partial_save_config(request: Request):
     if telegram_threshold.isdigit():
         updates["TELEGRAM_POINTS_THRESHOLD"] = int(telegram_threshold)
 
-    update_settings_and_env(updates)
-
     # Parámetros de Autocheck / Chequeador de puntos
     autocheck_enabled = "autocheck_enabled" in form_data
-    try:
-        checker_updates = {
-            "enabled": autocheck_enabled,
-        }
-        min_int = form_data.get("autocheck_min_interval")
-        if min_int and str(min_int).isdigit():
-            checker_updates["min_interval"] = int(min_int)
-        max_int = form_data.get("autocheck_max_interval")
-        if max_int and str(max_int).isdigit():
-            checker_updates["max_interval"] = int(max_int)
-        night_s = form_data.get("autocheck_night_start")
-        if night_s and str(night_s).isdigit():
-            checker_updates["night_start"] = int(night_s)
-        night_e = form_data.get("autocheck_night_end")
-        if night_e and str(night_e).isdigit():
-            checker_updates["night_end"] = int(night_e)
-        
-        checker_updates["autorun_enabled"] = "autocheck_autorun_enabled" in form_data
-        autorun_pts = form_data.get("autocheck_autorun_min_points")
-        if autorun_pts and str(autorun_pts).isdigit():
-            checker_updates["autorun_min_points"] = int(autorun_pts)
+    updates["AUTOCHECK_ENABLED"] = autocheck_enabled
+    checker_updates = {
+        "enabled": autocheck_enabled,
+    }
+    min_int = form_data.get("autocheck_min_interval")
+    if min_int and str(min_int).isdigit():
+        val_min = int(min_int)
+        updates["AUTOCHECK_MIN_INTERVAL"] = val_min
+        checker_updates["min_interval"] = val_min
 
+    max_int = form_data.get("autocheck_max_interval")
+    if max_int and str(max_int).isdigit():
+        val_max = int(max_int)
+        updates["AUTOCHECK_MAX_INTERVAL"] = val_max
+        checker_updates["max_interval"] = val_max
+
+    night_s = form_data.get("autocheck_night_start")
+    if night_s and str(night_s).isdigit():
+        val_ns = int(night_s)
+        updates["AUTOCHECK_NIGHT_START"] = val_ns
+        checker_updates["night_start"] = val_ns
+
+    night_e = form_data.get("autocheck_night_end")
+    if night_e and str(night_e).isdigit():
+        val_ne = int(night_e)
+        updates["AUTOCHECK_NIGHT_END"] = val_ne
+        checker_updates["night_end"] = val_ne
+
+    autorun_enabled = "autocheck_autorun_enabled" in form_data
+    updates["AUTOCHECK_AUTORUN_ENABLED"] = autorun_enabled
+    checker_updates["autorun_enabled"] = autorun_enabled
+
+    autorun_pts = form_data.get("autocheck_autorun_min_points")
+    if autorun_pts and str(autorun_pts).isdigit():
+        val_pts = int(autorun_pts)
+        updates["AUTOCHECK_AUTORUN_MIN_POINTS"] = val_pts
+        checker_updates["autorun_min_points"] = val_pts
+
+    # Guardar orden de categorías
+    categories_order = form_data.getlist("category_order")
+    if categories_order:
+        updates["CATEGORIES_ORDER"] = ",".join(categories_order)
+
+    # Persistir absolutamente todo en .env y .env.desa
+    update_settings_and_env(updates)
+
+    # Sincronizar estado en memoria del autochecker
+    try:
         points_checker.update_config(**checker_updates)
 
         if autocheck_enabled and not points_checker.is_running:
@@ -407,10 +431,9 @@ async def partial_save_config(request: Request):
         elif not autocheck_enabled and points_checker.is_running:
             points_checker.stop()
     except Exception as e:
-        logger.warning(f"Error actualizando configuración del autochecker: {e}")
+        logger.warning(f"Error actualizando estado del autochecker en memoria: {e}")
 
-    # Guardar orden de categorías
-    categories_order = form_data.getlist("category_order")
+    # Guardar orden de categorías en el gestor de categorías
     if categories_order:
         save_categories_config(categories_order, categories_order)
 

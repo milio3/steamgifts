@@ -85,42 +85,54 @@ DEFAULT_CATEGORY_ORDER: List[str] = [
 
 
 def load_categories_config() -> Tuple[List[str], Set[str]]:
-    """Carga el orden y las categorías habilitadas desde el fichero de configuración."""
-    if CONFIG_PATH.exists():
+    """Carga el orden y las categorías habilitadas desde settings (.env) o bot_config.json."""
+    from app.core.config import settings
+
+    raw_order = None
+    if getattr(settings, "CATEGORIES_ORDER", None):
+        raw_order = [c.strip() for c in settings.CATEGORIES_ORDER.split(",") if c.strip()]
+
+    if not raw_order and CONFIG_PATH.exists():
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 raw_order = data.get("categories_order", [])
-                raw_enabled = data.get("enabled_categories", [])
-
-                # Normalizar si viniese 'multiple_copies' antiguo
-                order = ["Multiple Copies" if c == "multiple_copies" else c for c in raw_order]
-                enabled = set("Multiple Copies" if c == "multiple_copies" else c for c in raw_enabled)
-
-                valid_order = [c for c in order if c in AVAILABLE_CATEGORIES]
-                for c in DEFAULT_CATEGORY_ORDER:
-                    if c not in valid_order:
-                        valid_order.append(c)
-                        enabled.add(c)
-
-                return valid_order, enabled
         except Exception as e:
             logger.warning(f"No se pudo leer {CONFIG_PATH}, usando orden por defecto: {e}")
+
+    if raw_order:
+        # Normalizar si viniese 'multiple_copies' antiguo
+        order = ["Multiple Copies" if c == "multiple_copies" else c for c in raw_order]
+        valid_order = [c for c in order if c in AVAILABLE_CATEGORIES]
+        enabled = set(valid_order)
+        for c in DEFAULT_CATEGORY_ORDER:
+            if c not in valid_order:
+                valid_order.append(c)
+                enabled.add(c)
+        return valid_order, enabled
 
     return list(DEFAULT_CATEGORY_ORDER), set(DEFAULT_CATEGORY_ORDER)
 
 
 def save_categories_config(order: List[str], enabled: List[str]) -> bool:
-    """Guarda el orden y categorías habilitadas en data/bot_config.json."""
+    """Guarda el orden y categorías habilitadas en .env y en data/bot_config.json."""
+    valid_order = [c for c in order if c in AVAILABLE_CATEGORIES]
+    for c in DEFAULT_CATEGORY_ORDER:
+        if c not in valid_order:
+            valid_order.append(c)
+
+    valid_enabled = [c for c in enabled if c in AVAILABLE_CATEGORIES]
+
+    # 1. Persistir en .env
+    try:
+        from app.core.config import update_settings_and_env
+        update_settings_and_env({"CATEGORIES_ORDER": ",".join(valid_order)})
+    except Exception as e:
+        logger.error(f"Error guardando orden de categorías en .env: {e}")
+
+    # 2. Persistir en bot_config.json (retrocompatibilidad)
     try:
         CONFIG_PATH.parent.mkdir(exist_ok=True)
-        valid_order = [c for c in order if c in AVAILABLE_CATEGORIES]
-        for c in DEFAULT_CATEGORY_ORDER:
-            if c not in valid_order:
-                valid_order.append(c)
-
-        valid_enabled = [c for c in enabled if c in AVAILABLE_CATEGORIES]
-
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(
                 {
@@ -133,5 +145,5 @@ def save_categories_config(order: List[str], enabled: List[str]) -> bool:
             )
         return True
     except Exception as e:
-        logger.error(f"Error guardando configuración de categorías: {e}")
+        logger.error(f"Error guardando configuración de categorías en JSON: {e}")
         return False
