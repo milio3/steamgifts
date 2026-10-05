@@ -8,6 +8,7 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "SteamGifts Bot"
     VERSION: str = "2.1.1"
+    PORT: int = 8090
     DEBUG: bool = False
     DATABASE_URL: str = "sqlite:///data/database.db"
     STEAMGIFTS_PHPSESSID: str = ""
@@ -49,7 +50,7 @@ class Settings(BaseSettings):
         return v
 
     model_config = SettingsConfigDict(
-        env_file=(".env", ".env.desa") if os.path.exists(".env.desa") else ".env",
+        env_file=(".env.desa", ".env") if os.path.exists(".env.desa") else ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )

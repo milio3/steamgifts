@@ -5,19 +5,20 @@ services:
     container_name: steamgifts-bot
     restart: unless-stopped
     ports:
-      - "${PORT:-8086}:80"
+      - "${PORT:-8090}:8090"
     environment:
       - TZ=Europe/Madrid
     env_file:
       - .env
     volumes:
       - /mnt/dietpi_userdata/apps/steamgifts/data:/app/data
+      - ./.env:/app/.env
     deploy:
       resources:
         limits:
           memory: 512M
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost/health\")' || exit 1"]
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8090/health\")' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

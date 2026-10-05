@@ -52,7 +52,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-El panel web estará disponible en `http://localhost:8086` (o el puerto configurado en `.env`).
+El panel web estará disponible en `http://localhost:8090` (o el puerto configurado en `.env`).
 
 ---
 
@@ -68,7 +68,7 @@ pip install -r requirements.txt
 
 # 3. Configurar .env y lanzar el servidor web
 cp .env.example .env
-uvicorn app.main:app --host 0.0.0.0 --port 8086 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload
 ```
 
 ---
@@ -90,13 +90,22 @@ python cli.py --export-csv historial.csv       # Exportar entradas a CSV
 | Variable | Descripción | Valor por defecto |
 | :--- | :--- | :--- |
 | `STEAMGIFTS_PHPSESSID` | Cookie de sesión activa de SteamGifts | `""` |
-| `PORT` | Puerto del servidor web | `8086` |
+| `PORT` | Puerto del servidor web | `8090` |
 | `MAX_ENTRIES_PER_RUN` | Límite de sorteos por ronda | `25` |
 | `MIN_DELAY_SECONDS` | Pausa mínima entre sorteos | `3.0` |
 | `MAX_DELAY_SECONDS` | Pausa máxima entre sorteos | `8.0` |
 | `TELEGRAM_ALERTS_ENABLED` | Activar avisos por Telegram | `true` |
 | `TELEGRAM_BOT_TOKEN` | Token de tu bot de Telegram | `""` |
 | `TELEGRAM_CHAT_ID` | Tu Chat ID de Telegram | `""` |
+| `TELEGRAM_POINTS_THRESHOLD` | Umbral de puntos para alerta | `400` |
+| `AUTOCHECK_ENABLED` | Chequeo periódico automático de puntos | `true` |
+| `AUTOCHECK_MIN_INTERVAL` | Intervalo mínimo de chequeo (minutos) | `60` |
+| `AUTOCHECK_MAX_INTERVAL` | Intervalo máximo de chequeo (minutos) | `120` |
+| `AUTOCHECK_NIGHT_START` | Hora de inicio pausa nocturna España | `1` |
+| `AUTOCHECK_NIGHT_END` | Hora de fin pausa nocturna España | `9` |
+| `AUTOCHECK_AUTORUN_ENABLED` | Auto-ejecución automática por puntos | `true` |
+| `AUTOCHECK_AUTORUN_MIN_POINTS` | Umbral de puntos para auto-ejecución | `380` |
+| `CATEGORIES_ORDER` | Prioridad y orden de categorías | `"wishlist,dlc,group,..."` |
 
 ---
 

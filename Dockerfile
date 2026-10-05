@@ -20,6 +20,6 @@ COPY cli.py ./
 RUN mkdir -p /app/data && chown -R appuser:appuser /app/data /app
 USER appuser
 
-EXPOSE 80
+EXPOSE 8090
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8090"]
