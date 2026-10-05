@@ -58,9 +58,13 @@ logger = logging.getLogger("SteamGiftsCLI")
 
 from app.core.config import settings
 from app.core.database import Base, SessionLocal, engine
+from app.core.logging_buffer import setup_file_logging
 from app.models.entry import Entry, RunLog
 from app.services.bot_engine import BotEngine
 from app.services.steamgifts_client import SteamGiftsClient
+
+# Asegurar persistencia de logs en fichero .log
+setup_file_logging()
 
 
 def text_width(s: str) -> int:

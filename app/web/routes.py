@@ -364,12 +364,14 @@ async def partial_save_config(request: Request):
     if categories_order:
         save_categories_config(categories_order, categories_order)
 
-    return HTMLResponse(
+    resp = HTMLResponse(
         "<div class='alert alert-success d-flex align-items-center py-2 px-3 mb-0 shadow-sm animate-fade' style='background: rgba(92, 126, 16, 0.2); border: 1px solid #7eb318; color: #a4d007;'>"
         "<i class='bi bi-check-circle-fill me-2 fs-5'></i>"
         "<div><strong>¡Configuración guardada!</strong> Los parámetros generales, el sistema de autochequeo, las alertas de Telegram y el orden de categorías han sido actualizados con éxito.</div>"
         "</div>"
     )
+    resp.headers["HX-Trigger"] = '{"refreshAutocheck": true, "refreshAccount": true, "refreshStats": true}'
+    return resp
 
 
 @router.get("/partials/entries-table", response_class=HTMLResponse)
@@ -557,11 +559,13 @@ async def partial_ejecutar_bot_formulario(
 
     order, _ = load_categories_config()
     background_tasks.add_task(_ejecutar_bot_en_segundo_plano, order)
-    return HTMLResponse(
+    resp = HTMLResponse(
         "<div class='alert alert-success py-2 mb-0 small animate-fade'>"
         "<i class='bi bi-check-circle me-1'></i> ¡Ejecución iniciada! Sigue el progreso en tiempo real en la consola."
         "</div>"
     )
+    resp.headers["HX-Trigger"] = '{"refreshStats": true, "refreshSessions": true, "refreshAccount": true}'
+    return resp
 
 
 @router.post("/partials/save-category-order", response_class=HTMLResponse)
@@ -737,11 +741,13 @@ async def partial_autocheck_toggle(request: Request):
         points_checker.stop()
     else:
         points_checker.start()
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         request=request,
         name='components/autocheck_status.html',
         context={'checker': points_checker.get_status()},
     )
+    resp.headers["HX-Trigger"] = '{"refreshAccount": true, "refreshStats": true}'
+    return resp
 
 
 @router.post('/partials/autocheck-config', response_class=HTMLResponse)
@@ -768,11 +774,13 @@ async def partial_autocheck_config(request: Request):
             updates['max_interval'] = val
     if updates:
         points_checker.update_config(**updates)
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         request=request,
         name='components/autocheck_status.html',
         context={'checker': points_checker.get_status()},
     )
+    resp.headers["HX-Trigger"] = '{"refreshAccount": true, "refreshStats": true}'
+    return resp
 
 
 @router.get('/partials/autocheck-status', response_class=HTMLResponse)

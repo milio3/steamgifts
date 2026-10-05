@@ -8,6 +8,13 @@ _account_cache: Optional["AccountInfo"] = None
 _account_cache_timestamp: float = 0.0
 _ACCOUNT_CACHE_TTL: float = 60.0
 
+
+def invalidate_account_cache():
+    """Invalida la caché de información de cuenta para forzar recarga fresca en la siguiente consulta."""
+    global _account_cache, _account_cache_timestamp
+    _account_cache = None
+    _account_cache_timestamp = 0.0
+
 try:
     from curl_cffi import requests as http_requests
     from curl_cffi.requests.exceptions import (

@@ -41,7 +41,14 @@ venv.bak/
 # Project specific
 data/
 logs/
+*.log
 .DS_Store
+
+# Tests
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # IDEs
 .idea/

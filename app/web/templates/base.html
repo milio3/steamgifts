@@ -65,7 +65,7 @@
                     <!-- Recuadro Cuenta: Carga automática al iniciar la web -->
                     <div id="account-pill-container"
                          hx-get="/partials/account-points"
-                         hx-trigger="load, refreshAccount from:body"
+                         hx-trigger="load, refreshAccount from:body, every 20s"
                          hx-swap="innerHTML">
                         <div class="btn-sg-account-box text-muted">
                             <i class="bi bi-person-fill text-secondary me-2 fs-6"></i>

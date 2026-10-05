@@ -12,15 +12,17 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database import Base, engine
-from app.core.logging_buffer import console_handler
+from app.core.logging_buffer import console_handler, setup_file_logging
 
-# Configuración de logging
+# Configuración de logging en consola y buffer web
 logging.basicConfig(
     level=logging.DEBUG if settings.DEBUG else logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logging.root.addHandler(console_handler)
+# Configurar archivo de log persistente (logs/steamgifts_bot.log)
+setup_file_logging()
 logger = logging.getLogger(__name__)
 
 # Variable global para estado del bot

@@ -18,7 +18,7 @@ class RunLog(Base):
     __tablename__ = "run_logs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    started_at = Column(DateTime, default=_ahora_utc)
+    started_at = Column(DateTime, default=_ahora_utc, index=True)
     finished_at = Column(DateTime, nullable=True)
     total_entries = Column(Integer, default=0)
     total_points_spent = Column(Integer, default=0)
@@ -37,18 +37,18 @@ class Entry(Base):
     __tablename__ = "entries"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=_ahora_utc)
+    timestamp = Column(DateTime, default=_ahora_utc, index=True)
     game_name = Column(String(500), nullable=False)
     giveaway_code = Column(String(10), nullable=False)
     giveaway_url = Column(String(500), nullable=True)
-    category = Column(String(50), nullable=False)
+    category = Column(String(50), nullable=False, index=True)
     points_spent = Column(Integer, nullable=False, default=0)
     points_remaining = Column(Integer, nullable=True)
     entries_count = Column(Integer, nullable=True, default=0)
     copies = Column(Integer, default=1)
-    result = Column(String(20), nullable=False)  # success, error, skipped
+    result = Column(String(20), nullable=False, index=True)  # success, error, skipped
     error_message = Column(String(500), nullable=True)
     time_remaining = Column(String(100), nullable=True)
 
-    run_id = Column(Integer, ForeignKey("run_logs.id"), nullable=True)
+    run_id = Column(Integer, ForeignKey("run_logs.id"), nullable=True, index=True)
     run_log = relationship("RunLog", back_populates="entries")

@@ -120,6 +120,15 @@ class BotEngine:
             run_log.finished_at = datetime.now(timezone.utc)
             self.db.commit()
 
+            # Sincronizar estado en caliente
+            try:
+                from app.services.steamgifts_client import invalidate_account_cache
+                from app.services.points_checker import points_checker
+                invalidate_account_cache()
+                points_checker._last_points = puntos_actuales
+            except Exception:
+                pass
+
             logger.info("═" * 60)
             logger.info(
                 f"[OK] Ronda terminada: {entradas_realizadas} entradas realizadas "

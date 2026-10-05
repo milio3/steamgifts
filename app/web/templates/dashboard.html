@@ -11,7 +11,11 @@
 </div>
 
 <!-- Fila 1: Métricas Principales -->
-<div id="stats-container" class="mb-3">
+<div id="stats-container" 
+     class="mb-3" 
+     hx-get="/partials/stats" 
+     hx-trigger="refreshStats from:body, every 8s" 
+     hx-swap="innerHTML">
     {% include "components/stats_cards.html" %}
 </div>
 

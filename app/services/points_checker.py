@@ -303,7 +303,7 @@ class PointsChecker:
                 logger.warning("[AUTOCHECKER] Sesión inválida al chequear puntos")
                 return
 
-            acc = client.get_account_info()
+            acc = client.get_account_info(force=True)
             self._last_points = acc.points
             self._last_check = datetime.now()
             self._checks_count += 1

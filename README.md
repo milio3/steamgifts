@@ -1,238 +1,124 @@
 # 🎮 SteamGifts Auto-Enter Bot
 
-Aplicación modular en **Python / FastAPI** para automatizar la participación en sorteos de [SteamGifts.com](https://www.steamgifts.com/) con gestión inteligente de puntos, priorización estricta por categorías, persistencia completa en SQLite, interfaz web con Jinja2 + HTMX y cliente CLI para terminal.
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)](https://www.docker.com/)
+
+Aplicación moderna y ligera en **Python (FastAPI + HTMX)** para automatizar de forma inteligente y segura la participación en sorteos de [SteamGifts.com](https://www.steamgifts.com/), con priorización de categorías, chequeo autónomo de puntos, pausas humanas, registro persistente en SQLite y alertas en Telegram.
 
 ---
 
-## 🚀 Características Principales
+## ✨ Características Principales
 
-- **Autenticación sin contraseñas:** Utiliza únicamente la cookie de sesión `PHPSESSID` obtenida del navegador tras el login vía Steam OpenID.
-- **Estrategia de priorización estricta:**
-  1. 🌟 **Wishlist:** `/giveaways/search?type=wishlist`
-  2. 📦 **DLCs:** `/giveaways/search?dlc=true`
-  3. 👥 **Grupos (Group):** `/giveaways/search?type=group`
-  4. 📋 **Múltiples copias:** `/giveaways/search?copy_min=2`
-  5. 🆕 **Nuevos:** `/giveaways/search?type=new`
-- **Gestión eficiente de puntos:** Invierte los puntos disponibles según el orden de prioridad y detecta si ya se ha participado previamente (`is-faded`).
-- **Doble interfaz de uso:**
-  - 🌐 **Panel Web (FastAPI + HTMX):** Monitoreo en tiempo real, estadísticas, historial, ejecuciones pasadas y botón de lanzamiento manual.
-  - 💻 **Cliente CLI (`cli.py`):** Ejecución directa desde terminal, diagnósticos de cuenta, estadísticas resumidas y exportación a CSV.
-- **Respeto a rate limits y comportamiento humano:** Jitter aleatorio configurable (3-8 segundos entre participaciones) y delays entre categorías.
-- **Base de datos SQLite optimizada:** Modo WAL (*Write-Ahead Logging*) y timeouts de conexión para operaciones concurrentes seguras.
-- **Contenerización lista para producción:** `Dockerfile` con usuario no-root (`appuser`), límites de memoria y healthchecks en `compose.yml`.
-
----
-
-## 📋 Requisitos Previos
-
-- Python 3.12+ (para ejecución local)
-- Docker y Docker Compose (para despliegue en servidor / Raspberry Pi)
-- Cuenta activa en SteamGifts con puntos acumulados
+- 🔄 **Chequeo Automático con Jitter:** Consulta periódica inteligente con intervalos aleatorios y pausa nocturna (España) para evitar comportamientos detectables.
+- ⚡ **Auto-Ejecución Inteligente:** Lanza rondas automáticas al alcanzar el umbral de puntos deseado (ej. $\ge 380$ P).
+- 🌟 **Priorización por Categorías:** Orden configurable y personalizable con drag & drop:
+  1. *Wishlist (Lista de deseados)*
+  2. *DLCs*
+  3. *Grupos*
+  4. *Múltiples copias*
+  5. *Nuevos sorteos*
+- 🖥️ **Panel Web en Tiempo Real:** Interfaz estilo SteamGifts Dark con consola en vivo, métricas, historial paginado y sesiones de ejecución.
+- 💬 **Alertas de Telegram:** Notificaciones instantáneas al alcanzar límites de puntos y resúmenes de rondas automáticas.
+- 🛡️ **Comportamiento Humano:** *Jitter* configurable entre entradas (3-8s) y pausas entre categorías para respetar rate limits y Cloudflare.
+- 📝 **Registro en Fichero `.log`:** Guardado persistente y rotativo en `logs/steamgifts_bot.log`.
+- 💻 **Cliente CLI:** Control total desde la terminal con `python cli.py`.
 
 ---
 
 ## 🔑 Obtención de la Cookie `PHPSESSID`
 
-1. Abre [SteamGifts](https://www.steamgifts.com) en tu navegador e inicia sesión con Steam.
-2. Pulsa <kbd>F12</kbd> (o clic derecho → *Inspeccionar*).
-3. Ve a la pestaña **Application** (en Chrome/Edge) o **Storage/Almacenamiento** (en Firefox).
-4. En el menú izquierdo, despliega **Cookies** → `https://www.steamgifts.com`.
-5. Localiza la fila con el nombre **`PHPSESSID`** y copia su valor.
-6. Pega este valor en tu archivo `.env`:
-   ```env
-   STEAMGIFTS_PHPSESSID=tu_cookie_aqui
-   ```
+1. Inicia sesión en [SteamGifts](https://www.steamgifts.com).
+2. Abre las herramientas de desarrollo (<kbd>F12</kbd>).
+3. Ve a **Application** (Chrome/Edge) o **Storage** (Firefox) → **Cookies** → `https://www.steamgifts.com`.
+4. Copia el valor de **`PHPSESSID`** y pégalo en tu archivo `.env`.
 
-> [!WARNING]
-> Tu cookie `PHPSESSID` equivale a tu sesión activa en SteamGifts. **Nunca la compartas ni la subas a repositorios públicos.**
+> ⚠️ **Aviso de seguridad:** Tu `PHPSESSID` equivale a tu sesión activa. Nunca la compartas ni la subas a repositorios públicos.
 
 ---
 
-## 🛠️ Instalación y Configuración Local
+## ⚡ Despliegue Rápido con Docker Compose
 
-1. Clona el repositorio o accede a su carpeta:
-   ```bash
-   cd steamgifts
-   ```
-2. Crea y activa un entorno virtual de Python:
-   ```bash
-   # En Windows
-   python -m venv .venv
-   .venv\Scripts\activate
+```bash
+# 1. Clonar el repositorio
+git clone <url-del-repo> steamgifts && cd steamgifts
 
-   # En Linux / macOS
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-3. Instala las dependencias:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Configura el archivo de entorno `.env`:
-   ```bash
-   cp .env.example .env
-   # Edita .env y añade tu STEAMGIFTS_PHPSESSID
-   ```
+# 2. Configurar variables de entorno
+cp .env.example .env
+# Edita .env y añade tu STEAMGIFTS_PHPSESSID
+
+# 3. Arrancar el contenedor
+docker compose up -d --build
+```
+
+El panel web estará disponible en `http://localhost:8086` (o el puerto configurado en `.env`).
 
 ---
 
-## 💻 Uso por Línea de Comandos (CLI)
+## 🛠️ Ejecución Local con Python
 
-El proyecto incluye el script `cli.py` para operar directamente desde la consola:
-
-### 1. Diagnóstico de sesión (sin participar en sorteos)
-Comprueba si la cookie es válida y muestra el usuario, puntos y nivel de cuenta:
 ```bash
-python cli.py --check
-```
+# 1. Crear y activar entorno virtual
+python -m venv .venv
+source .venv/bin/activate  # En Windows: .venv\Scripts\activate
 
-### 2. Ejecutar una ronda completa del bot
-Procesa todas las categorías en su orden de prioridad por defecto (Wishlist → DLC → Group → Multiple Copies → New):
-```bash
-python cli.py
-```
+# 2. Instalar dependencias
+pip install -r requirements.txt
 
-### 3. Ejecutar solo categorías específicas
-```bash
-# Ejemplo: solo Wishlist y DLCs
-python cli.py --categories wishlist dlc
-
-# Ejemplo: con límite de 10 entradas
-python cli.py --categories wishlist --max-entries 10
-```
-
-### 4. Consultar estadísticas de la base de datos
-```bash
-python cli.py --stats
-```
-
-### 5. Exportar el historial a un archivo CSV
-```bash
-python cli.py --export-csv entradas_steamgifts.csv
+# 3. Configurar .env y lanzar el servidor web
+cp .env.example .env
+uvicorn app.main:app --host 0.0.0.0 --port 8086 --reload
 ```
 
 ---
 
-## 🌐 Uso de la Aplicación Web (FastAPI)
+## 💻 Uso por Consola (CLI)
 
-Para iniciar el servidor web local con recarga automática:
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8085 --reload
+python cli.py --check                         # Comprobar estado de la sesión y puntos
+python cli.py                                 # Ejecutar una ronda completa
+python cli.py --categories wishlist dlc       # Ejecutar solo categorías específicas
+python cli.py --stats                         # Ver estadísticas globales
+python cli.py --export-csv historial.csv       # Exportar entradas a CSV
 ```
-
-Accede desde tu navegador a:
-- **Panel de Control:** `http://localhost:8085/dashboard`
-- **Historial de Entradas:** `http://localhost:8085/entries`
-- **Registro de Ejecuciones:** `http://localhost:8085/runs`
-- **Configuración y Diagnóstico:** `http://localhost:8085/config`
-- **Documentación Interactiva Swagger:** `http://localhost:8085/docs`
-- **Endpoint de vitalidad:** `http://localhost:8085/health`
-- **Endpoint de disponibilidad:** `http://localhost:8085/ready`
 
 ---
 
-## 🏗️ Arquitectura del Proyecto
+## ⚙️ Variables de Entorno Esenciales
+
+| Variable | Descripción | Valor por defecto |
+| :--- | :--- | :--- |
+| `STEAMGIFTS_PHPSESSID` | Cookie de sesión activa de SteamGifts | `""` |
+| `PORT` | Puerto del servidor web | `8086` |
+| `MAX_ENTRIES_PER_RUN` | Límite de sorteos por ronda | `25` |
+| `MIN_DELAY_SECONDS` | Pausa mínima entre sorteos | `3.0` |
+| `MAX_DELAY_SECONDS` | Pausa máxima entre sorteos | `8.0` |
+| `TELEGRAM_ALERTS_ENABLED` | Activar avisos por Telegram | `true` |
+| `TELEGRAM_BOT_TOKEN` | Token de tu bot de Telegram | `""` |
+| `TELEGRAM_CHAT_ID` | Tu Chat ID de Telegram | `""` |
+
+---
+
+## 📁 Estructura del Proyecto
 
 ```text
 steamgifts/
 ├── app/
-│   ├── main.py                  # Instancia FastAPI, lifespan, middlewares y montaje estático
-│   ├── api/
-│   │   ├── health.py            # Endpoints /health y /ready
-│   │   └── v1/
-│   │       ├── bot.py           # Endpoints de control del bot y diagnóstico
-│   │       └── entries.py       # Endpoints de consulta de historial y estadísticas
-│   ├── core/
-│   │   ├── config.py            # Configuración tipada con Pydantic Settings (.env)
-│   │   └── database.py          # Conexión SQLite con modo WAL y SessionLocal
-│   ├── models/
-│   │   └── entry.py             # Modelos SQLAlchemy: Entry y RunLog
-│   ├── schemas/
-│   │   └── giveaway.py          # Modelos Pydantic para validación y DTOs
-│   ├── services/
-│   │   ├── steamgifts_client.py # Cliente HTTP con requests y BeautifulSoup
-│   │   └── bot_engine.py        # Orquestador del bot, delays y lógica de prioridades
-│   └── web/
-│       ├── routes.py            # Enrutador SSR y parciales HTMX
-│       ├── static/
-│       │   ├── css/style.css    # Estilos inspirados en Steam / SteamGifts
-│       │   └── js/app.js        # Módulo JavaScript para interactividad
-│       └── templates/
-│           ├── base.html        # Layout base con navbar y badges en tiempo real
-│           ├── dashboard.html   # Panel de control principal
-│           ├── entries.html     # Historial de entradas con filtros
-│           ├── runs.html        # Historial de ejecuciones
-│           ├── run_detail.html  # Detalle de una ejecución concreta
-│           ├── config.html      # Pantalla de configuración y diagnóstico
-│           └── components/      # Fragmentos parciales para HTMX
-│               ├── bot_status.html
-│               ├── entries_table.html
-│               ├── run_summary.html
-│               ├── runs_table.html
-│               ├── session_status.html
-│               └── stats_cards.html
-├── cli.py                       # Script CLI para terminal
-├── tests/
-│   ├── conftest.py              # Fixtures pytest y BD en memoria con StaticPool
-│   ├── test_health.py           # Pruebas de endpoints /health y /ready
-│   ├── test_api.py              # Pruebas funcionales de la API
-│   └── test_web.py              # Pruebas de vistas HTML y parciales HTMX
-├── compose.yml                  # Configuración Docker Compose con límites y healthcheck
-├── Dockerfile                   # Imagen ligera Python 3.12 con usuario no-root
-├── requirements.txt             # Dependencias con versiones fijadas
-├── .env.example                 # Plantilla de variables de entorno
-└── README.md
+│   ├── api/             # Endpoints REST (/health, /api/v1/bot, /api/v1/entries)
+│   ├── core/            # Configuración (.env), BD SQLite (WAL) y buffer de logs
+│   ├── models/          # Modelos SQLAlchemy (Entry, RunLog con índices)
+│   ├── schemas/         # Esquemas Pydantic
+│   ├── services/        # Cliente HTTP, motor de sorteos, autochecker y Telegram
+│   └── web/             # Rutas Jinja2, parciales HTMX, estáticos (CSS/JS)
+├── cli.py               # Herramienta CLI de terminal
+├── docker-compose.yml   # Despliegue con Docker Compose
+├── Dockerfile           # Imagen ligera en Python 3.12
+└── logs/                # Registro rotativo de ejecuciones y chequeos (.log)
 ```
 
 ---
 
-## 🐳 Despliegue en Producción (Docker Compose)
+## ⚖️ Licencia y Responsabilidad
 
-### 1. Preparar directorios en el servidor (ej. Raspberry Pi)
-```bash
-sudo mkdir -p /opt/apps/steamgifts /mnt/dietpi_userdata/apps/steamgifts/data /mnt/dietpi_userdata/backups/steamgifts
-sudo chown -R dev:dev /opt/apps/steamgifts /mnt/dietpi_userdata/apps/steamgifts /mnt/dietpi_userdata/backups/steamgifts
-```
-
-### 2. Configurar y arrancar
-```bash
-cd /opt/apps/steamgifts
-cp .env.example .env
-nano .env  # Configurar STEAMGIFTS_PHPSESSID
-
-docker compose up -d --build
-```
-
-El servicio quedará disponible en el puerto `8085` del servidor.
-
----
-
-## 💾 Copias de Seguridad (Backup Seguro SQLite)
-
-Debido al modo **WAL (*Write-Ahead Logging*)**, nunca debe copiarse el fichero `.db` directamente con `cp` mientras el servicio esté en ejecución.
-
-**Comando canónico de respaldo en caliente:**
-```bash
-sqlite3 /mnt/dietpi_userdata/apps/steamgifts/data/database.db ".backup '/mnt/dietpi_userdata/backups/steamgifts/db_$(date +%Y%m%d_%H%M%S).db'"
-```
-
----
-
-## 🧪 Pruebas Automatizadas
-
-Para ejecutar la batería completa de tests unitarios y funcionales:
-```bash
-python -m pytest -v
-```
-
----
-
-## ⚠️ Aviso Legal y Buenas Prácticas
-
-SteamGifts prohíbe en sus Términos de Servicio el uso de scripts no autorizados para automatizar participaciones masivas. Esta herramienta implementa mecanismos de seguridad activa:
-- Retardos aleatorios configurables (*jitter* humano entre 3 y 8 segundos).
-- Pausas entre categorías.
-- Límite máximo de participaciones por ejecución.
-- Respeta los bloqueos de Cloudflare.
-
-**Utiliza esta herramienta de forma responsable y bajo tu propio criterio.**
+Este proyecto es para fines educativos y de uso personal. Utiliza retardos aleatorios y límites razonables para interactuar de forma responsable con los servidores de SteamGifts.

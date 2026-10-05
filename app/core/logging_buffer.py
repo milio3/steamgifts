@@ -2,55 +2,70 @@
 
 import html
 import logging
+from logging.handlers import RotatingFileHandler
+import os
+from pathlib import Path
 import re
 from collections import deque
 from datetime import datetime
 from typing import Any, Dict, List
+
+# Expresiones regulares precompiladas para máximo rendimiento
+RE_URL = re.compile(r'https?://\S+')
+RE_TRAILING_COLON = re.compile(r':\s*$')
+RE_TAG_AUTOCHECKER = re.compile(r'\[AUTOCHECKER\]\s*', re.IGNORECASE)
+RE_TAG_ERROR = re.compile(r'\[ERROR\]\s*', re.IGNORECASE)
+RE_TAG_OK = re.compile(r'\[OK\]\s*', re.IGNORECASE)
+RE_TAG_SORTEO = re.compile(r'\[SORTEO\]\s*', re.IGNORECASE)
+RE_TAG_INICIO = re.compile(r'\[INICIO\]\s*', re.IGNORECASE)
+RE_TAG_AVISO = re.compile(r'\[AVISO\]\s*', re.IGNORECASE)
+RE_ANSI_ESCAPE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+
+# Estilo común para todos los badges (ancho fijo exacto de 100px para alineación perfecta)
+BADGE_STYLE = "display: inline-block; width: 100px; text-align: center; font-size: 0.72rem; font-weight: 700; border-radius: 3px; padding: 1px 0; margin-right: 8px; flex-shrink: 0;"
 
 
 def format_log_to_html(entry: Dict[str, Any]) -> str:
     """Convierte una entrada de log a una línea HTML con badges de ancho fijo para alineación perfecta."""
     t = entry["time"]
     raw_msg = entry["msg"]
-    # Limpiar URLs largas
-    clean_msg = re.sub(r'https?://\S+', '', raw_msg).strip()
-    clean_msg = re.sub(r':\s*$', '', clean_msg)
+    # Limpiar secuencias ANSI y URLs largas
+    clean_msg = RE_ANSI_ESCAPE.sub('', raw_msg)
+    clean_msg = RE_URL.sub('', clean_msg).strip()
+    clean_msg = RE_TRAILING_COLON.sub('', clean_msg)
     level = entry["level"]
 
-    # Estilo común para todos los badges (ancho fijo exacto de 100px para alineación perfecta)
-    b_style = "display: inline-block; width: 100px; text-align: center; font-size: 0.72rem; font-weight: 700; border-radius: 3px; padding: 1px 0; margin-right: 8px; flex-shrink: 0;"
-
-    msg_lower = raw_msg.lower()
+    msg_lower = clean_msg.lower()
 
     if "[autochecker]" in msg_lower:
-        badge_html = f'<span class="console-badge" style="{b_style} background:#17212b; color:#66c0f4; border:1px solid #2a475e;">CHECKER</span>'
+        badge_html = f'<span class="console-badge" style="{BADGE_STYLE} background:#17212b; color:#66c0f4; border:1px solid #2a475e;">CHECKER</span>'
         color_style = "color: #93c5fd;"
-        clean_msg = re.sub(r'\[AUTOCHECKER\]\s*', '', clean_msg)
+        clean_msg = RE_TAG_AUTOCHECKER.sub('', clean_msg)
     elif "[error]" in msg_lower or level == "ERROR":
-        badge_html = f'<span class="console-badge" style="{b_style} background:rgba(217,83,79,0.2); color:#f87171; border:1px solid rgba(217,83,79,0.4);">ERROR</span>'
+        badge_html = f'<span class="console-badge" style="{BADGE_STYLE} background:rgba(217,83,79,0.2); color:#f87171; border:1px solid rgba(217,83,79,0.4);">ERROR</span>'
         color_style = "color: #f87171; font-weight: 600;"
-        clean_msg = re.sub(r'\[ERROR\]\s*', '', clean_msg)
+        clean_msg = RE_TAG_ERROR.sub('', clean_msg)
     elif "[ok]" in msg_lower or "éxito" in msg_lower or "completad" in msg_lower:
-        badge_html = f'<span class="console-badge" style="{b_style} background:rgba(92,126,16,0.2); color:#96b847; border:1px solid rgba(150,184,71,0.4);">ÉXITO</span>'
+        badge_html = f'<span class="console-badge" style="{BADGE_STYLE} background:rgba(92,126,16,0.2); color:#96b847; border:1px solid rgba(150,184,71,0.4);">ÉXITO</span>'
         color_style = "color: #4ade80;"
-        clean_msg = re.sub(r'\[OK\]\s*', '', clean_msg)
+        clean_msg = RE_TAG_OK.sub('', clean_msg)
     elif "[sorteo]" in msg_lower or "entrando en" in msg_lower:
-        badge_html = f'<span class="console-badge" style="{b_style} background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.4);">SORTEO</span>'
+        badge_html = f'<span class="console-badge" style="{BADGE_STYLE} background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.4);">SORTEO</span>'
         color_style = "color: #38bdf8;"
-        clean_msg = re.sub(r'\[SORTEO\]\s*', '', clean_msg)
+        clean_msg = RE_TAG_SORTEO.sub('', clean_msg)
     elif "[inicio]" in msg_lower or "iniciando" in msg_lower:
-        badge_html = f'<span class="console-badge" style="{b_style} background:rgba(56,189,248,0.15); color:#60a5fa; border:1px solid rgba(56,189,248,0.4);">INICIO</span>'
+        badge_html = f'<span class="console-badge" style="{BADGE_STYLE} background:rgba(56,189,248,0.15); color:#60a5fa; border:1px solid rgba(56,189,248,0.4);">INICIO</span>'
         color_style = "color: #60a5fa; font-weight: 600;"
-        clean_msg = re.sub(r'\[INICIO\]\s*', '', clean_msg)
+        clean_msg = RE_TAG_INICIO.sub('', clean_msg)
     elif "[aviso]" in msg_lower or level == "WARNING" or "esperando" in msg_lower:
-        badge_html = f'<span class="console-badge" style="{b_style} background:rgba(229,169,60,0.15); color:#e5a93c; border:1px solid rgba(229,169,60,0.4);">AVISO</span>'
+        badge_html = f'<span class="console-badge" style="{BADGE_STYLE} background:rgba(229,169,60,0.15); color:#e5a93c; border:1px solid rgba(229,169,60,0.4);">AVISO</span>'
         color_style = "color: #fbbf24;"
-        clean_msg = re.sub(r'\[AVISO\]\s*', '', clean_msg)
+        clean_msg = RE_TAG_AVISO.sub('', clean_msg)
     elif "cuenta:" in msg_lower or "puntos:" in msg_lower:
-        badge_html = f'<span class="console-badge" style="{b_style} background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.4);">CUENTA</span>'
+        badge_html = f'<span class="console-badge" style="{BADGE_STYLE} background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.4);">CUENTA</span>'
         color_style = "color: #a3e635; font-weight: 500;"
     else:
-        badge_html = f'<span class="console-badge" style="{b_style} background:#19222e; color:#8f98a0; border:1px solid #2a475e;">SISTEMA</span>'
+        badge_html = f'<span class="console-badge" style="{BADGE_STYLE} background:#19222e; color:#8f98a0; border:1px solid #2a475e;">SISTEMA</span>'
         color_style = "color: #c7d5e0;"
 
     escaped_msg = html.escape(clean_msg.strip())
@@ -105,3 +120,54 @@ class WebConsoleHandler(logging.Handler):
 
 
 console_handler = WebConsoleHandler()
+
+
+class CleanFileFormatter(logging.Formatter):
+    """Formateador para el archivo .log que elimina secuencias de escape ANSI."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        record_msg = record.getMessage()
+        clean = RE_ANSI_ESCAPE.sub('', record_msg)
+        orig_msg = record.msg
+        orig_args = record.args
+        record.msg = clean
+        record.args = None
+        try:
+            return super().format(record)
+        finally:
+            record.msg = orig_msg
+            record.args = orig_args
+
+
+def setup_file_logging(
+    log_dir: str = "logs",
+    log_filename: str = "steamgifts_bot.log",
+    max_bytes: int = 5 * 1024 * 1024,  # 5 MB
+    backup_count: int = 5,
+) -> RotatingFileHandler:
+    """Configura y añade un RotatingFileHandler al logger raíz para registrar ejecuciones y chequeos."""
+    log_path = Path(log_dir)
+    log_path.mkdir(parents=True, exist_ok=True)
+    file_target = log_path / log_filename
+
+    file_handler = RotatingFileHandler(
+        file_target,
+        maxBytes=max_bytes,
+        backupCount=backup_count,
+        encoding="utf-8",
+    )
+    file_handler.setLevel(logging.INFO)
+    formatter = CleanFileFormatter(
+        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    file_handler.setFormatter(formatter)
+
+    # Evitar duplicar handlers si ya está registrado
+    root_logger = logging.getLogger()
+    for h in root_logger.handlers:
+        if isinstance(h, RotatingFileHandler) and getattr(h, 'baseFilename', None) == str(file_target.resolve()):
+            return h
+
+    root_logger.addHandler(file_handler)
+    return file_handler

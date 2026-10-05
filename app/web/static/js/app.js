@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initConfigCategorySorting();
     initConsoleAutoScroll();
     initAutocheck();
+    initGlobalStateWatcher();
 });
 
 /**
@@ -52,9 +53,12 @@ function initRunBotForm() {
                 if (e.detail.successful) {
                     btn.innerHTML = '<i class="bi bi-arrow-repeat spin me-2"></i> Ejecución en curso';
                     btn.classList.add('btn-warning');
+                    // Refrescar paneles de dashboard
+                    triggerAllRefreshes();
                 } else {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="bi bi-play-fill fs-5 me-1"></i> Iniciar Ejecución';
+                    btn.classList.remove('btn-warning');
                     alert('Error al iniciar el bot.');
                 }
             }
@@ -128,15 +132,100 @@ function initConfigCategorySorting() {
 }
 
 /**
- * Auto-scroll hacia abajo de la consola web en el Dashboard
+ * Auto-scroll inteligente de la consola web:
+ * Si el usuario se desplaza hacia arriba para leer logs antiguos, NO se fuerza el scroll al fondo.
+ * Si el usuario está al fondo (o vuelve a bajar), se mantiene el auto-scroll activo.
  */
 function initConsoleAutoScroll() {
     const consoleBody = document.getElementById('console-body');
     if (!consoleBody) return;
 
+    let userScrolledUp = false;
+    const scrollThreshold = 35; // px de margen desde el fondo
+
+    consoleBody.addEventListener('scroll', () => {
+        const distanceFromBottom = consoleBody.scrollHeight - consoleBody.scrollTop - consoleBody.clientHeight;
+        userScrolledUp = distanceFromBottom > scrollThreshold;
+    });
+
     document.body.addEventListener('htmx:afterSwap', (evt) => {
         if (evt.detail.target.id === 'console-logs') {
-            consoleBody.scrollTop = consoleBody.scrollHeight;
+            if (!userScrolledUp) {
+                consoleBody.scrollTop = consoleBody.scrollHeight;
+            }
+        }
+    });
+
+    // Si se limpia la consola, reiniciar estado de scroll al principio
+    document.body.addEventListener('htmx:afterRequest', (evt) => {
+        if (evt.detail.successful && evt.detail.pathInfo && evt.detail.pathInfo.requestPath.includes('clear-console')) {
+            userScrolledUp = false;
+            consoleBody.scrollTop = 0;
+        }
+    });
+}
+
+/**
+ * Dispara eventos de actualización globales a todos los componentes HTMX
+ */
+function triggerAllRefreshes() {
+    if (window.htmx) {
+        window.htmx.trigger(document.body, 'refreshStats');
+        window.htmx.trigger(document.body, 'refreshSessions');
+        window.htmx.trigger(document.body, 'refreshAccount');
+        window.htmx.trigger(document.body, 'refreshAutocheck');
+    }
+}
+
+/**
+ * Observador global de estado: vigila el fin de ejecuciones y chequeos para actualizar la página automáticamente
+ */
+function initGlobalStateWatcher() {
+    let wasBotRunning = false;
+    let lastSeenCheckHash = '';
+
+    document.body.addEventListener('htmx:afterSwap', (evt) => {
+        if (evt.detail.target.id === 'console-logs') {
+            const content = evt.detail.target.innerHTML || '';
+            const isCurrentlyRunning = content.includes('Ejecutando bot en segundo plano') || 
+                                       content.includes('INICIANDO EJECUCIÓN') ||
+                                       content.includes('Ejecución en curso');
+
+            // Detectar fin de ejecución (pasó de corriendo a finalizado)
+            if (wasBotRunning && !isCurrentlyRunning) {
+                wasBotRunning = false;
+                triggerAllRefreshes();
+
+                // Restaurar botón de ejecución
+                const btnRun = document.getElementById('btn-run-bot');
+                if (btnRun) {
+                    btnRun.disabled = false;
+                    btnRun.innerHTML = '<i class="bi bi-play-fill fs-5" style="line-height: 1;"></i><span>Iniciar Ejecución</span>';
+                    btnRun.classList.remove('btn-warning');
+                }
+            } else if (isCurrentlyRunning) {
+                wasBotRunning = true;
+            }
+
+            // Detectar si terminó una ronda o hubo éxito
+            if (content.includes('Ronda terminada:') && wasBotRunning) {
+                wasBotRunning = false;
+                triggerAllRefreshes();
+            }
+
+            // Detectar nuevos chequeos de puntos en la consola
+            const matchChecker = content.match(/Chequeo #\d+:\s*(\d+)\s*P/gi);
+            if (matchChecker && matchChecker.length > 0) {
+                const latestCheck = matchChecker[matchChecker.length - 1];
+                if (latestCheck !== lastSeenCheckHash) {
+                    lastSeenCheckHash = latestCheck;
+                    if (window.htmx) {
+                        window.htmx.trigger(document.body, 'refreshAccount');
+                        window.htmx.trigger(document.body, 'refreshStats');
+                        window.htmx.trigger(document.body, 'refreshAutocheck');
+                    }
+                }
+            }
         }
     });
 }
@@ -163,7 +252,7 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
                 btnRun.classList.add('btn-warning');
             } else if (!btnRun.innerHTML.includes('Iniciando')) {
                 btnRun.disabled = false;
-                btnRun.innerHTML = '<i class="bi bi-play-fill fs-5 me-1"></i> Iniciar Ejecución';
+                btnRun.innerHTML = '<i class="bi bi-play-fill fs-5" style="line-height: 1;"></i><span>Iniciar Ejecución</span>';
                 btnRun.classList.remove('btn-warning');
             }
         }
@@ -176,5 +265,4 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
 function initAutocheck() {
     const container = document.getElementById('autocheck-container');
     if (!container) return;
-    // El polling se maneja via hx-trigger en el HTML, no se necesita JS adicional
 }
