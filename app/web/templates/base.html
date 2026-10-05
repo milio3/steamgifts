@@ -62,10 +62,10 @@
 
                 <!-- Espacio a la derecha: Recuadro de Cuenta y Botón Iniciar Ejecución -->
                 <div class="d-flex align-items-center gap-2 mt-2 mt-lg-0 ms-lg-2">
-                    <!-- Recuadro Cuenta: Carga automática al iniciar la web -->
+                    <!-- Recuadro Cuenta: Carga al iniciar y solo se actualiza al terminar check o al iniciar ejecución -->
                     <div id="account-pill-container"
                          hx-get="/partials/account-points"
-                         hx-trigger="load, refreshAccount from:body, every 20s"
+                         hx-trigger="load, refreshAccount from:body"
                          hx-swap="innerHTML">
                         <div class="btn-sg-account-box text-muted">
                             <i class="bi bi-person-fill text-secondary me-2 fs-6"></i>

@@ -14,14 +14,14 @@ logger = logging.getLogger(__name__)
 # Ruta del fichero de persistencia de la configuración del autochecker
 _CONFIG_FILE = Path("data/autocheck_config.json")
 
-# Valores por defecto
+# Valores por defecto (activos tras cualquier despliegue o primera inicialización)
 _DEFAULTS = {
-    "enabled": False,
+    "enabled": True,
     "min_interval": 60,
     "max_interval": 120,
     "night_start": 1,
     "night_end": 9,
-    "autorun_enabled": False,
+    "autorun_enabled": True,
     "autorun_min_points": 380,
 }
 

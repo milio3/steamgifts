@@ -60,19 +60,11 @@
     </div>
 </div>
 
-<!-- Contenedor de la Tabla Paginada (Sin scrollbar) -->
+<!-- Contenedor de la Tabla Paginada (Carga instantánea) -->
 <div class="card card-sg">
     <div class="card-body p-0">
-        <div id="entries-table-container" 
-             hx-get="/partials/entries-table" 
-             hx-trigger="load" 
-             hx-include="#filters-form"
-             hx-swap="innerHTML">
-            <div class="d-flex justify-content-center my-5 py-4">
-                <div class="spinner-border text-info" role="status">
-                    <span class="visually-hidden">Cargando entradas...</span>
-                </div>
-            </div>
+        <div id="entries-table-container" hx-swap="innerHTML">
+            {% include "components/entries_table.html" %}
         </div>
     </div>
 </div>

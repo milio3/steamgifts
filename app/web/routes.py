@@ -134,18 +134,67 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/entries", response_class=HTMLResponse)
-async def historial(request: Request):
-    """Vista del historial de entradas con filtros."""
+async def historial(request: Request, db: Session = Depends(get_db)):
+    """Vista del historial de entradas con precarga instantánea de la primera página."""
+    per_page = 15
+    query = db.query(Entry)
+    total_count = query.count()
+    total_pages = max(1, math.ceil(total_count / per_page))
+    entries = query.order_by(Entry.timestamp.desc()).limit(per_page).all()
+    start_p = 1
+    end_p = min(total_pages, 5)
+    page_numbers = list(range(start_p, end_p + 1))
+    start_idx = 1 if total_count > 0 else 0
+    end_idx = min(per_page, total_count)
+
     return templates.TemplateResponse(
-        request=request, name="entries.html", context={"title": "Historial de Entradas"}
+        request=request,
+        name="entries.html",
+        context={
+            "title": "Historial de Entradas",
+            "entries": entries,
+            "page": 1,
+            "total_pages": total_pages,
+            "total_count": total_count,
+            "per_page": per_page,
+            "page_numbers": page_numbers,
+            "start_idx": start_idx,
+            "end_idx": end_idx,
+            "search": "",
+            "category": "",
+            "run_id": None,
+        },
     )
 
 
 @router.get("/runs", response_class=HTMLResponse)
-async def ejecuciones(request: Request):
-    """Vista de ejecuciones pasadas del bot."""
+async def ejecuciones(request: Request, db: Session = Depends(get_db)):
+    """Vista de ejecuciones pasadas del bot con precarga instantánea."""
+    per_page = 15
+    query = db.query(RunLog)
+    total_count = query.count()
+    total_pages = max(1, math.ceil(total_count / per_page))
+    runs = query.order_by(RunLog.started_at.desc()).limit(per_page).all()
+    start_p = 1
+    end_p = min(total_pages, 5)
+    page_numbers = list(range(start_p, end_p + 1))
+    start_idx = 1 if total_count > 0 else 0
+    end_idx = min(per_page, total_count)
+
     return templates.TemplateResponse(
-        request=request, name="runs.html", context={"title": "Ejecuciones"}
+        request=request,
+        name="runs.html",
+        context={
+            "title": "Ejecuciones",
+            "runs": runs,
+            "page": 1,
+            "total_pages": total_pages,
+            "total_count": total_count,
+            "per_page": per_page,
+            "page_numbers": page_numbers,
+            "start_idx": start_idx,
+            "end_idx": end_idx,
+        },
     )
 
 
@@ -667,7 +716,9 @@ async def partial_puntos_cuenta(request: Request):
             user_agent=settings.USER_AGENT,
             timeout=settings.HTTP_TIMEOUT_SECONDS,
         )
-        if not client.is_session_valid():
+        acc = client.get_account_info()
+
+        if not acc or acc.username == "Desconocido":
             return templates.TemplateResponse(
                 request=request,
                 name="components/account_points.html",
@@ -677,8 +728,6 @@ async def partial_puntos_cuenta(request: Request):
                     "error": "Sesión inválida o expirada. Actualiza tu PHPSESSID.",
                 },
             )
-
-        acc = client.get_account_info()
 
         # Si alcanza o supera el umbral configurado (ej. 400), comprobar alerta Telegram
         from app.services.telegram_alert import notify_points_threshold_exceeded

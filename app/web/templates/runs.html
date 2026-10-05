@@ -9,18 +9,11 @@
     </h2>
 </div>
 
-<!-- Tabla Paginada de Ejecuciones (Sin scrollbar, mismo formato que Historial) -->
+<!-- Tabla Paginada de Ejecuciones (Carga instantánea) -->
 <div class="card card-sg">
     <div class="card-body p-0">
-        <div id="runs-table-container" 
-             hx-get="/partials/runs-table" 
-             hx-trigger="load" 
-             hx-swap="innerHTML">
-            <div class="d-flex justify-content-center my-5 py-4">
-                <div class="spinner-border text-info" role="status">
-                    <span class="visually-hidden">Cargando ejecuciones...</span>
-                </div>
-            </div>
+        <div id="runs-table-container" hx-swap="innerHTML">
+            {% include "components/runs_table.html" %}
         </div>
     </div>
 </div>
