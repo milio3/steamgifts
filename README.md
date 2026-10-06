@@ -38,6 +38,26 @@ Aplicación moderna y ligera en **Python (FastAPI + HTMX)** para automatizar de 
 
 ---
 
+## 🌐 Configuración Recomendada de la Cuenta en SteamGifts
+
+Para maximizar la eficiencia del bot y cumplir con las normativas de la comunidad de SteamGifts, es **imprescindible configurar adecuadamente tu cuenta** en la sección [Account → Giveaways](https://www.steamgifts.com/account/settings/giveaways).
+
+El bot examina la primera página (`page=1`) de cada categoría utilizando tu sesión autenticada (`PHPSESSID`). Por ello, las opciones de filtrado configuradas en la web determinan directamente los sorteos que los servidores de SteamGifts devuelven al bot:
+
+| Opción en SteamGifts | Ajuste Recomendado | Relevancia e Impacto en el Bot |
+| :--- | :---: | :--- |
+| **Hide games you already own?** | **Yes** ✅ | **Crítico.** Evita que el bot intente entrar en sorteos de juegos que ya tienes en Steam (lo cual provocaría errores de entrada y va contra las normas del sitio). Además, evita que la primera página devuelta se sature de títulos que ya posees. |
+| **Hide DLC if you're missing the base game?** | **Yes** ✅ | **Crítico.** Esencial si está activa la categoría `dlc`. Las normas de SteamGifts prohíben participar en sorteos de DLCs si no posees el juego base en Steam (motivo de suspensión). Como el bot no consulta tu biblioteca en tiempo real, este filtro asegura que solo se analicen DLCs válidos y activables. |
+| **Hide giveaways above your level?** | **Yes** ✅ | **Muy Recomendado.** Aunque el bot descarta internamente los sorteos de nivel superior (`--negative`), si no se ocultan en la web ocupan posiciones útiles de la primera página. Al activarlo, el 100% de los sorteos devueltos son accesibles según tu nivel. |
+| **Hide giveaways you've already entered?** | **Yes** ✅ | **Muy Recomendado.** Aunque el bot detecta sorteos en los que ya has entrado (`is-faded`), en rondas periódicas o automáticas la primera página se llenaría rápidamente de sorteos ya participados, impidiendo que el bot descubra nuevos candidatos. |
+| **Hide games you manually filtered?** | **Yes** ✅ | **Recomendado.** Funciona como tu lista negra (*blacklist*) personalizada. Cualquier juego que ocultes manualmente en la web no aparecerá en las respuestas del bot, evitando gastar puntos en títulos no deseados o *shovelware*. |
+| **Filter by OS** | **All** (o tu SO) | **Opcional.** Por defecto `All`. Si juegas exclusivamente en Linux o macOS y no deseas acumular licencias solo compatibles con Windows, selecciona tu sistema operativo para que el bot solo reciba juegos compatibles. |
+| **Hide mature games?** | **A tu elección** (*No*) | **Opcional.** El bot no filtra por contenido para adultos. Si prefieres evitar que el bot participe en sorteos con violencia explícita o temáticas para mayores, márcalo en `Yes`. |
+
+> 💡 **Recordatorio:** No olvides pulsar **Save Changes** en la web de SteamGifts para aplicar los cambios a tu perfil.
+
+---
+
 ## ⚡ Despliegue Rápido con Docker Compose
 
 ```bash
