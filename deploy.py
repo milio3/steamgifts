@@ -195,6 +195,7 @@ def main():
     parser = argparse.ArgumentParser(description="Herramienta de despliegue y administración remota de SteamGifts Bot.")
     parser.add_argument("--host", default=DEFAULT_HOST, help=f"IP o hostname de la Raspberry Pi (por defecto {DEFAULT_HOST})")
     parser.add_argument("--user", default=DEFAULT_USER, help=f"Usuario SSH (por defecto {DEFAULT_USER})")
+    parser.add_argument("--password", default=None, help="Contraseña SSH para el usuario dev en la Raspberry Pi")
     parser.add_argument("--sync-db", action="store_true", help="Sube la base de datos SQLite local a la Raspberry Pi")
     parser.add_argument("--check", action="store_true", help="Diagnóstico remoto del estado de Docker, puertos y salud")
     parser.add_argument("--logs", action="store_true", help="Muestra los logs del contenedor Docker en tiempo real")
@@ -203,25 +204,25 @@ def main():
     args = parser.parse_args()
 
     if args.check:
-        ssh, pwd = conectar_ssh(args.host, args.user)
+        ssh, pwd = conectar_ssh(args.host, args.user, args.password)
         try:
             diagnostico_remoto(ssh, pwd, args.host)
         finally:
             ssh.close()
     elif args.logs:
-        ssh, pwd = conectar_ssh(args.host, args.user)
+        ssh, pwd = conectar_ssh(args.host, args.user, args.password)
         try:
             ver_logs(ssh, pwd)
         finally:
             ssh.close()
     elif args.cmd:
-        ssh, pwd = conectar_ssh(args.host, args.user)
+        ssh, pwd = conectar_ssh(args.host, args.user, args.password)
         try:
             run_cmd(ssh, pwd, args.cmd, sudo=True)
         finally:
             ssh.close()
     else:
-        deploy(sync_database=args.sync_db, host=args.host, user=args.user)
+        deploy(sync_database=args.sync_db, host=args.host, user=args.user, password=args.password)
 
 
 if __name__ == "__main__":
