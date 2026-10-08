@@ -531,3 +531,54 @@ input[type=number] {
     background-color: #121820;
     border-color: #1e2b38;
 }
+
+/* Indicador de Juegos Ganados y Banner de Premios */
+.badge-won-pill {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(234, 179, 8, 0.15);
+    border: 1px solid rgba(234, 179, 8, 0.5);
+    border-radius: 12px;
+    padding: 2px 6px;
+    animation: wonGlow 2s infinite alternate;
+    transition: transform 0.15s ease;
+}
+
+.badge-won-pill:hover {
+    transform: scale(1.08);
+    background: rgba(234, 179, 8, 0.25);
+}
+
+@keyframes wonGlow {
+    0% {
+        box-shadow: 0 0 4px rgba(234, 179, 8, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 12px rgba(234, 179, 8, 0.8);
+    }
+}
+
+.alert-won-banner {
+    background: linear-gradient(135deg, rgba(35, 45, 60, 0.95), rgba(45, 30, 10, 0.9));
+    border: 1px solid rgba(234, 179, 8, 0.6);
+    box-shadow: 0 4px 20px rgba(234, 179, 8, 0.15);
+}
+
+.won-trophy-icon-box {
+    width: 48px;
+    height: 48px;
+    background: rgba(234, 179, 8, 0.15);
+    border: 1px solid rgba(234, 179, 8, 0.4);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    animation: bounceTrophy 2s infinite ease-in-out;
+}
+
+@keyframes bounceTrophy {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+

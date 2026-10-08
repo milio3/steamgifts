@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Juegos Ganados{% endblock %}
+
+{% block content %}
+<!-- Título de la Sección -->
+<div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom" style="border-color: #2a475e !important;">
+    <div class="d-flex align-items-center gap-2">
+        <h2 class="h4 fw-bold text-white mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-trophy-fill text-warning"></i> Juegos Ganados
+        </h2>
+        {% if won_pending and won_pending > 0 %}
+            <span class="badge bg-danger rounded-pill px-2 py-1 fs-6">
+                {{ won_pending }} pendiente{% if won_pending > 1 %}s{% endif %}
+            </span>
+        {% endif %}
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="https://www.steamgifts.com/giveaways/won" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-warning d-flex align-items-center gap-1">
+            <i class="bi bi-box-arrow-up-right"></i>
+            <span>Ver en SteamGifts</span>
+        </a>
+    </div>
+</div>
+
+<!-- Banner de Felicitación si hay premios pendientes de confirmar o nuevos -->
+{% if won_pending and won_pending > 0 %}
+<div class="alert alert-won-banner d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 shadow">
+    <div class="d-flex align-items-center gap-3">
+        <div class="won-trophy-icon-box">
+            <i class="bi bi-trophy-fill text-warning fs-3"></i>
+        </div>
+        <div>
+            <h5 class="fw-bold text-white mb-1">¡Enhorabuena! Has ganado en SteamGifts</h5>
+            <div class="small text-light opacity-90">
+                Tienes <strong>{{ won_pending }} sorteo(s)</strong> ganado(s) pendiente(s) de revisión o confirmación de feedback. Accede al sorteo para canjear tu clave y confirmar la recepción del juego.
+            </div>
+        </div>
+    </div>
+    <a href="https://www.steamgifts.com/giveaways/won" target="_blank" rel="noopener noreferrer" class="btn btn-warning text-dark fw-bold px-3 py-2 text-nowrap ms-3">
+        <i class="bi bi-key-fill me-1"></i> Reclamar en SteamGifts
+    </a>
+</div>
+{% endif %}
+
+<!-- Tarjeta con la Tabla de Sorteos Ganados -->
+<div class="card card-sg mb-4">
+    <div class="card-header card-header-sg d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-gift text-info"></i>
+            <span>Historial de Premios Ganados</span>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary py-0 px-2" hx-get="/partials/won-table" hx-target="#won-table-container" hx-swap="innerHTML" title="Actualizar lista de premios">
+            <i class="bi bi-arrow-clockwise"></i> Recargar
+        </button>
+    </div>
+    <div class="card-body p-0" id="won-table-container" hx-get="/partials/won-table" hx-trigger="load" hx-swap="innerHTML">
+        <div class="p-5 text-center text-muted">
+            <div class="spinner-border text-info spinner-border-sm mb-2" role="status"></div>
+            <div>Consultando sorteos ganados en SteamGifts...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

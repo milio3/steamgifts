@@ -33,11 +33,23 @@ class RunSummary(BaseModel):
     trigger_type: Optional[str] = "manual"
     entries: List[EntryResult]
 
+class WonGiveawayInfo(BaseModel):
+    game_name: str
+    giveaway_code: str
+    giveaway_url: str
+    steam_image_url: Optional[str] = None
+    ended_timestamp: Optional[int] = None
+    ended_text: Optional[str] = None
+    feedback_status: Optional[str] = "unknown"  # pending_feedback, received, not_received, unknown
+    has_key: Optional[bool] = False
+
 class AccountInfo(BaseModel):
     points: int
     level: int
     username: str
     xsrf_token: Optional[str] = None
+    won_pending: int = 0
+    won_count: int = 0
 
 class RunRequest(BaseModel):
     categories: Optional[List[str]] = None
@@ -45,3 +57,4 @@ class RunRequest(BaseModel):
 class CategoriesConfigRequest(BaseModel):
     order: List[str]
     enabled: Optional[List[str]] = None
+

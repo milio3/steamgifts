@@ -10,6 +10,26 @@
     </h2>
 </div>
 
+<!-- Banner destacado de Juego Ganado si hay pendientes -->
+{% if won_pending and won_pending > 0 %}
+<div class="alert alert-won-banner d-flex align-items-center justify-content-between p-3 mb-3 rounded-3 shadow">
+    <div class="d-flex align-items-center gap-3">
+        <div class="won-trophy-icon-box">
+            <i class="bi bi-trophy-fill text-warning fs-3"></i>
+        </div>
+        <div>
+            <h5 class="fw-bold text-white mb-1">¡Has ganado {{ won_pending }} sorteo(s) en SteamGifts! 🏆</h5>
+            <div class="small text-light opacity-90">
+                Tienes juegos ganados pendientes de confirmar o con clave disponible para canjear.
+            </div>
+        </div>
+    </div>
+    <a href="/won" class="btn btn-warning text-dark fw-bold px-3 py-2 text-nowrap ms-3">
+        <i class="bi bi-trophy-fill me-1"></i> Ver Juegos Ganados
+    </a>
+</div>
+{% endif %}
+
 <!-- Fila 1: Métricas Principales -->
 <div id="stats-container" 
      class="mb-3" 

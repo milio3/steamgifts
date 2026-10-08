@@ -45,7 +45,6 @@ logs/
 .DS_Store
 
 # Tests
-tests/
 .pytest_cache/
 .coverage
 htmlcov/

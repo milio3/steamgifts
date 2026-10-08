@@ -130,6 +130,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "known_points": known_points,
             "threshold": settings.TELEGRAM_POINTS_THRESHOLD,
             "checker": checker_status,
+            "won_pending": points_checker._last_won_pending,
         },
     )
 
@@ -206,6 +207,33 @@ async def detalle_ejecucion(request: Request, run_id: int):
         request=request,
         name="run_detail.html",
         context={"title": f"Ejecución #{run_id}", "run_id": run_id},
+    )
+
+
+@router.get("/won", response_class=HTMLResponse)
+async def juegos_ganados(request: Request):
+    """Vista de juegos y sorteos ganados en SteamGifts."""
+    won_pending = 0
+    if settings.STEAMGIFTS_PHPSESSID:
+        try:
+            client = SteamGiftsClient(
+                phpsessid=settings.STEAMGIFTS_PHPSESSID,
+                base_url=settings.STEAMGIFTS_BASE_URL,
+                user_agent=settings.USER_AGENT,
+                timeout=settings.HTTP_TIMEOUT_SECONDS,
+            )
+            acc = client.get_account_info()
+            won_pending = acc.won_pending
+        except Exception:
+            pass
+
+    return templates.TemplateResponse(
+        request=request,
+        name="won.html",
+        context={
+            "title": "Juegos Ganados",
+            "won_pending": won_pending,
+        },
     )
 
 
@@ -771,6 +799,7 @@ async def partial_puntos_cuenta(request: Request):
                 "points": acc.points,
                 "username": acc.username,
                 "level": acc.level,
+                "won_pending": acc.won_pending,
                 "threshold": settings.TELEGRAM_POINTS_THRESHOLD,
                 "limit_reached": acc.points >= settings.TELEGRAM_POINTS_THRESHOLD,
             },
@@ -786,6 +815,38 @@ async def partial_puntos_cuenta(request: Request):
                 "error": f"Error al conectar con SteamGifts: {e}",
             },
         )
+
+
+@router.get("/partials/won-table", response_class=HTMLResponse)
+async def partial_tabla_ganados(request: Request, page: int = 1):
+    """Fragmento HTML con la lista de sorteos ganados por el usuario."""
+    if not settings.STEAMGIFTS_PHPSESSID:
+        return HTMLResponse(
+            "<div class='p-4 text-center text-muted'>Cookie PHPSESSID no configurada. Ve a Configuración.</div>"
+        )
+
+    try:
+        client = SteamGiftsClient(
+            phpsessid=settings.STEAMGIFTS_PHPSESSID,
+            base_url=settings.STEAMGIFTS_BASE_URL,
+            user_agent=settings.USER_AGENT,
+            timeout=settings.HTTP_TIMEOUT_SECONDS,
+        )
+        won_list = client.get_won_giveaways(page=page)
+        return templates.TemplateResponse(
+            request=request,
+            name="components/won_table.html",
+            context={
+                "won_list": won_list,
+                "page": page,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error obteniendo tabla de ganados: {e}")
+        return HTMLResponse(
+            f"<div class='alert alert-danger m-3'>Error al cargar sorteos ganados de SteamGifts: {html.escape(str(e))}</div>"
+        )
+
 
 
 @router.post("/partials/test-telegram", response_class=HTMLResponse)

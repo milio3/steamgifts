@@ -54,6 +54,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if 'won' in request.url.path %}active{% endif %}" href="/won">
+                            <i class="bi bi-trophy text-warning me-1"></i> Ganados
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if 'config' in request.url.path %}active{% endif %}" href="/config">
                             <i class="bi bi-gear me-1"></i> Configuración
                         </a>

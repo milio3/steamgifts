@@ -1,7 +1,7 @@
 """Endpoints API para controlar el bot: ejecutar, estado y cuenta."""
 
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -14,7 +14,12 @@ from app.core.categories import (
 )
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.schemas.giveaway import AccountInfo, CategoriesConfigRequest, RunRequest
+from app.schemas.giveaway import (
+    AccountInfo,
+    CategoriesConfigRequest,
+    RunRequest,
+    WonGiveawayInfo,
+)
 from app.services.bot_engine import BotEngine
 from app.services.steamgifts_client import SteamGiftsClient
 
@@ -107,6 +112,13 @@ def informacion_cuenta():
     """Obtiene la información actual de la cuenta en SteamGifts."""
     client = _crear_cliente()
     return client.get_account_info()
+
+
+@router.get("/won", response_model=List[WonGiveawayInfo])
+def obtener_juegos_ganados(page: int = 1):
+    """Obtiene el historial de sorteos ganados por el usuario."""
+    client = _crear_cliente()
+    return client.get_won_giveaways(page=page)
 
 
 @router.get("/categories")

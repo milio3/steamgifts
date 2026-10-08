@@ -1,0 +1,104 @@
+<!-- Tabla de Sorteos Ganados en SteamGifts -->
+{% if not won_list %}
+    <div class="p-5 text-center text-muted">
+        <div class="mb-3">
+            <i class="bi bi-trophy text-secondary" style="font-size: 3rem; opacity: 0.5;"></i>
+        </div>
+        <h5 class="text-light fw-bold">No se han encontrado sorteos ganados</h5>
+        <p class="small text-muted mb-0">Cuando ganes un sorteo en SteamGifts aparecerá registrado automáticamente aquí.</p>
+    </div>
+{% else %}
+    <div class="table-responsive">
+        <table class="table table-sg align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 100px;">Juego</th>
+                    <th>Título del Sorteo</th>
+                    <th style="width: 170px;">Finalizado</th>
+                    <th style="width: 190px;" class="text-center">Estado del Premio</th>
+                    <th style="width: 130px;" class="text-end">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for gw in won_list %}
+                <tr class="align-middle">
+                    <!-- Miniatura de Steam -->
+                    <td>
+                        {% if gw.steam_image_url %}
+                            <img src="{{ gw.steam_image_url }}" alt="{{ gw.game_name }}" class="rounded shadow-sm" style="width: 92px; height: 35px; object-fit: cover; border: 1px solid #2a475e;" loading="lazy">
+                        {% else %}
+                            <div class="rounded d-flex align-items-center justify-content-center bg-dark text-muted" style="width: 92px; height: 35px; border: 1px solid #2a475e;">
+                                <i class="bi bi-controller fs-6"></i>
+                            </div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Nombre del Juego y Enlace -->
+                    <td>
+                        <div class="fw-bold text-white text-truncate" style="max-width: 480px;" title="{{ gw.game_name }}">
+                            {{ gw.game_name }}
+                        </div>
+                        <div class="small text-muted font-monospace">
+                            Código: <span class="text-info">{{ gw.giveaway_code }}</span>
+                        </div>
+                    </td>
+
+                    <!-- Tiempo transcurrido -->
+                    <td class="text-nowrap small text-muted">
+                        <i class="bi bi-calendar-check me-1 text-secondary"></i>
+                        <span>{{ gw.ended_text or 'Finalizado' }}</span>
+                    </td>
+
+                    <!-- Estado del Premio / Feedback -->
+                    <td class="text-center">
+                        {% if gw.feedback_status == 'pending_feedback' %}
+                            <span class="badge bg-warning text-dark px-2 py-1 shadow-sm d-inline-flex align-items-center gap-1">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Pendiente Confirmar
+                            </span>
+                        {% elif gw.feedback_status == 'received' %}
+                            <span class="badge bg-success px-2 py-1 shadow-sm d-inline-flex align-items-center gap-1" style="background-color: #5c7e10 !important;">
+                                <i class="bi bi-check-circle-fill"></i> Recibido
+                            </span>
+                        {% elif gw.has_key %}
+                            <span class="badge bg-info text-dark px-2 py-1 shadow-sm d-inline-flex align-items-center gap-1">
+                                <i class="bi bi-key-fill"></i> Clave Disponible
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary px-2 py-1 text-muted">
+                                Ganado
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Enlace directo a SteamGifts -->
+                    <td class="text-end">
+                        <a href="{{ gw.giveaway_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info py-1 px-2" title="Abrir sorteo en SteamGifts">
+                            <span>Ver Sorteo</span>
+                            <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 0.75rem;"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginación de Sorteos Ganados -->
+    <div class="d-flex justify-content-between align-items-center p-3 border-top" style="border-color: #243547 !important;">
+        <span class="small text-muted">
+            Mostrando página {{ page }}
+        </span>
+        <div class="btn-group btn-group-sm">
+            {% if page > 1 %}
+                <button class="btn btn-outline-secondary" hx-get="/partials/won-table?page={{ page - 1 }}" hx-target="#won-table-container" hx-swap="innerHTML">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                </button>
+            {% endif %}
+            {% if won_list|length >= 50 %}
+                <button class="btn btn-outline-secondary ms-1" hx-get="/partials/won-table?page={{ page + 1 }}" hx-target="#won-table-container" hx-swap="innerHTML">
+                    Siguiente <i class="bi bi-chevron-right"></i>
+                </button>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
