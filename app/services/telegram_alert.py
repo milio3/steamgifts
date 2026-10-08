@@ -94,24 +94,4 @@ def notify_automatic_run_completed(run_id: int, entries: int, points_spent: int,
     return send_telegram_message(mensaje)
 
 
-def notify_game_won(game_name: str, giveaway_url: str = "", count: int = 1) -> bool:
-    """Envía una alerta a Telegram cuando se detecta que el usuario ha ganado un juego."""
-    url_info = f"\n🔗 <a href='{giveaway_url}'>Ver sorteo en SteamGifts</a>" if giveaway_url else ""
-    if count > 1:
-        mensaje = (
-            "🏆🎉 <b>¡Enhorabuena! Has ganado juegos en SteamGifts</b>\n\n"
-            f"¡Tienes <b>{count} juegos ganados</b> pendientes de confirmación/revisión en SteamGifts!\n"
-            f"🎮 Último juego detectado: <b>{html.escape(game_name)}</b>"
-            f"{url_info}\n\n"
-            "<i>Recuerda acceder a SteamGifts para canjear tu clave y dejar feedback.</i>"
-        )
-    else:
-        mensaje = (
-            "🏆🎉 <b>¡Enhorabuena! Has ganado un juego en SteamGifts</b>\n\n"
-            f"🎮 <b>Juego:</b> <code>{html.escape(game_name)}</code>"
-            f"{url_info}\n\n"
-            "<i>Recuerda acceder a SteamGifts para canjear tu clave y marcar el regalo como recibido.</i>"
-        )
-    return send_telegram_message(mensaje)
-
 

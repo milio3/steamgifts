@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock, patch
 from app.schemas.giveaway import WonGiveawayInfo, AccountInfo
 from app.services.steamgifts_client import SteamGiftsClient
-from app.services.telegram_alert import notify_game_won
 
 
 HTML_WON_ROW_SAMPLE = """
@@ -144,11 +143,3 @@ def test_web_won_page_and_partial(client):
         assert "PORTAL2" in resp_table.text
         assert "Pendiente Confirmar" in resp_table.text
 
-
-def test_telegram_notify_game_won():
-    """Valida el envío de notificación de juego ganado por Telegram."""
-    with patch("app.services.telegram_alert.send_telegram_message", return_value=True) as mock_send:
-        exito = notify_game_won("Cyberpunk 2077", "https://www.steamgifts.com/giveaway/XYZ/", count=1)
-        assert exito is True
-        mock_send.assert_called_once()
-        assert "Cyberpunk 2077" in mock_send.call_args[0][0]
