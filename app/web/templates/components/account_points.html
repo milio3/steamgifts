@@ -10,16 +10,10 @@
         <span class="small text-danger">Sin conexión</span>
     </div>
 {% else %}
-    <div class="btn-sg-account-box d-flex align-items-center" title="Cuenta conectada a SteamGifts">
+    <div class="btn-sg-account-box" title="Cuenta conectada a SteamGifts">
         <!-- Icono de usuario azul cuando hay datos -->
         <i class="bi bi-person-fill text-info me-2 fs-6"></i>
         <span class="fw-bold text-white small me-1">{{ username }}</span>
         <span class="small font-monospace" style="color: #96b847; font-weight: 600;">{{ points }}p</span>
-        {% if won_pending and won_pending > 0 %}
-            <a href="/won" class="badge-won-pill ms-2 text-decoration-none" title="¡Has ganado {{ won_pending }} juego(s) en SteamGifts! Pulsa para ver">
-                <i class="bi bi-trophy-fill text-warning fs-6"></i>
-                <span class="badge bg-danger rounded-pill px-1 py-0 ms-1 fw-bold" style="font-size: 0.72rem;">{{ won_pending }}</span>
-            </a>
-        {% endif %}
     </div>
 {% endif %}

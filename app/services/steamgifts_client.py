@@ -34,7 +34,7 @@ except ImportError:
 
 from bs4 import BeautifulSoup
 
-from app.schemas.giveaway import AccountInfo, EntryResult, GiveawayInfo, WonGiveawayInfo
+from app.schemas.giveaway import AccountInfo, EntryResult, GiveawayInfo
 
 logger = logging.getLogger(__name__)
 
@@ -180,92 +180,6 @@ class SteamGiftsClient:
         except Exception as e:
             logger.error(f"Error obteniendo información de la cuenta: {e}")
             raise
-
-    def get_won_giveaways(self, page: int = 1) -> List[WonGiveawayInfo]:
-        """Obtiene la lista de juegos ganados por el usuario en SteamGifts."""
-        try:
-            url = f"{self.base_url}/giveaways/won?page={page}"
-            logger.info(f"Consultando sorteos ganados en SteamGifts (pág. {page})")
-            response = self.session.get(url, timeout=self.timeout)
-            response.raise_for_status()
-
-            # Comprobar si Cloudflare bloqueó la petición
-            if "cf-browser-verification" in response.text or "just a moment" in response.text.lower():
-                logger.error("Cloudflare ha bloqueado la petición de sorteos ganados.")
-                return []
-
-            soup = BeautifulSoup(response.text, "html.parser")
-            won_list: List[WonGiveawayInfo] = []
-            filas = soup.select(".table__row-inner-wrap")
-
-            for fila in filas:
-                item = self._parse_won_giveaway_row(fila)
-                if item:
-                    won_list.append(item)
-
-            logger.info(f"  → {len(won_list)} sorteo(s) ganado(s) cargado(s) de la página {page}")
-            return won_list
-        except Exception as e:
-            logger.error(f"Error obteniendo sorteos ganados: {e}")
-            return []
-
-    def _parse_won_giveaway_row(self, row_element) -> Optional[WonGiveawayInfo]:
-        """Parsea una fila HTML de la tabla de sorteos ganados."""
-        try:
-            heading = row_element.select_one(".table__column__heading")
-            if not heading:
-                return None
-            game_name = heading.text.strip()
-            href = heading.get("href", "")
-            code_match = re.search(r"/giveaway/([A-Za-z0-9]+)/", href)
-            code = code_match.group(1) if code_match else ""
-
-            # Imagen miniatura de Steam
-            thumb_elem = row_element.select_one(".table_image_thumbnail")
-            img_url = None
-            if thumb_elem and thumb_elem.get("style"):
-                style = thumb_elem.get("style")
-                match_bg = re.search(r"url\((.*?)\)", style)
-                if match_bg:
-                    img_url = match_bg.group(1).strip("\"'")
-
-            # Fecha / Timestamp
-            time_elem = row_element.select_one("span[data-timestamp]")
-            ended_ts = None
-            ended_text = ""
-            if time_elem:
-                ts_raw = time_elem.get("data-timestamp")
-                if ts_raw and ts_raw.isdigit():
-                    ended_ts = int(ts_raw)
-                ended_text = time_elem.text.strip()
-
-            # Botón de ver clave disponible
-            has_key = row_element.select_one(".view_key_btn") is not None
-
-            # Estado de feedback
-            feedback_awaiting = row_element.select_one(".table__gift-feedback-awaiting-reply")
-            feedback_received = row_element.select_one(".table__gift-feedback-received")
-
-            if feedback_awaiting and "is-hidden" not in " ".join(feedback_awaiting.get("class", [])):
-                feedback_status = "pending_feedback"
-            elif feedback_received and "is-hidden" not in " ".join(feedback_received.get("class", [])):
-                feedback_status = "received"
-            else:
-                feedback_status = "unknown"
-
-            return WonGiveawayInfo(
-                game_name=game_name,
-                giveaway_code=code,
-                giveaway_url=f"{self.base_url}{href}" if href.startswith("/") else href,
-                steam_image_url=img_url,
-                ended_timestamp=ended_ts,
-                ended_text=ended_text,
-                feedback_status=feedback_status,
-                has_key=has_key,
-            )
-        except Exception as e:
-            logger.error(f"Error parseando fila de sorteo ganado: {e}")
-            return None
 
     def get_giveaways(
         self, category_url: str, category_name: str, page: int = 1

@@ -19,8 +19,7 @@ Aplicación moderna y ligera en **Python (FastAPI + HTMX)** para automatizar de 
   3. *Grupos*
   4. *Múltiples copias*
   5. *Nuevos sorteos*
-- 🖥️ **Panel Web en Tiempo Real:** Interfaz estilo SteamGifts Dark con consola en vivo, métricas, historial paginado y sesiones de ejecución.
-- 🏆 **Indicador y Sección de Juegos Ganados:** Detección automática en la barra de navegación, avisos destacados en el panel y visor dedicado de sorteos ganados con miniatura, estado de clave y enlaces directos.
+- 🏆 **Banner Destacado de Juegos Ganados:** Aviso automático y destacado en el Dashboard al ganar sorteos con enlace directo a SteamGifts para canjear claves.
 - 💬 **Alertas de Telegram:** Notificaciones instantáneas al alcanzar límites de puntos y resúmenes de rondas automáticas.
 - 🛡️ **Comportamiento Humano:** *Jitter* configurable entre entradas (3-8s) y pausas entre categorías para respetar rate limits y Cloudflare.
 - 📝 **Registro en Fichero `.log`:** Guardado persistente y rotativo en `logs/steamgifts_bot.log`.
