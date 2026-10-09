@@ -35,8 +35,35 @@ if hasattr(sys.stderr, "reconfigure"):
 PROJECT_ROOT = Path(__file__).resolve().parent
 APP_NAME = "steamgifts"
 PORT_SERVICE = 8090
-DEFAULT_HOST = "192.168.1.33"
-DEFAULT_USER = "dev"
+
+
+def load_tools_env():
+    """Carga variables desde el archivo .env de Dev/tools si existe."""
+    posibles_rutas = [
+        PROJECT_ROOT.parent / "tools" / ".env",
+        Path(r"C:\Users\milio3\OneDrive\Dev\tools\.env"),
+        PROJECT_ROOT / "tools" / ".env",
+    ]
+    for env_file in posibles_rutas:
+        if env_file.exists():
+            try:
+                with open(env_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            k, v = k.strip(), v.strip().strip('"').strip("'")
+                            if k and k not in os.environ:
+                                os.environ[k] = v
+                break
+            except Exception:
+                pass
+
+
+load_tools_env()
+
+DEFAULT_HOST = os.environ.get("RPI_HOST", "192.168.1.33")
+DEFAULT_USER = os.environ.get("RPI_USER", "dev")
 
 
 def conectar_ssh(host: str, user: str, password: str = None):

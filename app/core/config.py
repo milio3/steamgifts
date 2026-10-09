@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     """Configuración centralizada de la aplicación con validación de tipos Pydantic."""
 
     PROJECT_NAME: str = "SteamGifts Bot"
-    VERSION: str = "2.3.0"
+    VERSION: str = "2.3.1"
     PORT: int = 8090
     DEBUG: bool = False
     DATABASE_URL: str = "sqlite:///data/database.db"
