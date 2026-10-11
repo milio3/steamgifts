@@ -364,11 +364,18 @@ function initGlobalStateWatcher() {
             if (matchChecker && matchChecker.length > 0) {
                 const latestCheck = matchChecker[matchChecker.length - 1];
                 if (latestCheck !== lastSeenCheckHash) {
+                    const isSubsequentCheck = (lastSeenCheckHash !== '');
                     lastSeenCheckHash = latestCheck;
                     if (window.htmx) {
                         window.htmx.trigger(document.body, 'refreshAccount');
                         window.htmx.trigger(document.body, 'refreshStats');
                         window.htmx.trigger(document.body, 'refreshAutocheck');
+                    }
+                    if (isSubsequentCheck) {
+                        // Tras cada nuevo chequeo completado, recargar automáticamente la página para actualizar el banner de premios
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 800);
                     }
                 }
             }

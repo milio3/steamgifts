@@ -116,8 +116,8 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     checker_status = points_checker.get_status()
 
     # Comprobar si hay juegos ganados para el banner destacado del Dashboard
-    won_pending = 0
-    if settings.STEAMGIFTS_PHPSESSID:
+    won_pending = getattr(points_checker, "_last_won_pending", 0)
+    if won_pending == 0 and settings.STEAMGIFTS_PHPSESSID:
         try:
             client = SteamGiftsClient(
                 phpsessid=settings.STEAMGIFTS_PHPSESSID,
@@ -127,6 +127,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             )
             acc = client.get_account_info()
             won_pending = acc.won_pending
+            points_checker._last_won_pending = won_pending
         except Exception:
             won_pending = 0
 

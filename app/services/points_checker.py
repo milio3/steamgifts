@@ -64,6 +64,7 @@ class PointsChecker:
         self._status: str = "detenido"
         self._checks_count: int = 0
         self._autoruns_count: int = 0
+        self._last_won_pending: int = 0
 
         # Cargar configuración persistida
         cfg = _load_config()
@@ -100,6 +101,7 @@ class PointsChecker:
             "autorun_min_points": self.autorun_min_points,
             "checks_count": self._checks_count,
             "autoruns_count": self._autoruns_count,
+            "won_pending": self._last_won_pending,
         }
 
     # ── Control de ciclo de vida ────────────────────────────────────
@@ -324,6 +326,7 @@ class PointsChecker:
 
             acc = client.get_account_info(force=True)
             self._last_points = acc.points
+            self._last_won_pending = acc.won_pending
             self._last_check = datetime.now()
             self._checks_count += 1
 
@@ -331,6 +334,15 @@ class PointsChecker:
                 f"[AUTOCHECKER] ✅ Chequeo #{self._checks_count}: "
                 f"{acc.points} P (usuario: {acc.username})"
             )
+
+            # Comprobar si hay premios pendientes de canjear y avisar en la consola web
+            if acc.won_pending > 0:
+                msg_premio = (
+                    "🏆 [PREMIO] Tienes pendiente canjear un juego en SteamGifts"
+                    if acc.won_pending == 1
+                    else f"🏆 [PREMIO] Tienes pendientes canjear {acc.won_pending} juegos en SteamGifts"
+                )
+                logger.info(f"[AUTOCHECKER] {msg_premio}")
 
             # Comprobar alerta Telegram de puntos
             if acc.points >= settings.TELEGRAM_POINTS_THRESHOLD:

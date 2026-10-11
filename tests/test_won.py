@@ -57,6 +57,9 @@ def test_dashboard_shows_won_banner_when_won_pending(client):
 
 def test_dashboard_hides_won_banner_when_no_won(client):
     """Valida que el Dashboard NO muestre el banner si no hay juegos ganados pendientes."""
+    from app.services.points_checker import points_checker
+    points_checker._last_won_pending = 0
+
     mock_account = AccountInfo(
         points=250,
         level=2,
@@ -69,3 +72,54 @@ def test_dashboard_hides_won_banner_when_no_won(client):
         response = client.get("/dashboard")
         assert response.status_code == 200
         assert "alert-won-banner" not in response.text
+
+
+def test_points_checker_detects_won_pending_and_logs(caplog):
+    """Valida que PointsChecker detecte juegos ganados en cada chequeo y emita el aviso en el log/consola."""
+    import logging
+    from app.services.points_checker import PointsChecker
+
+    checker = PointsChecker()
+    mock_account = AccountInfo(
+        points=120,
+        level=2,
+        username="LuckyWinner",
+        xsrf_token="token123",
+        won_pending=1,
+    )
+
+    with patch("app.core.config.settings.STEAMGIFTS_PHPSESSID", "dummy_sessid"), \
+         patch("app.services.steamgifts_client.SteamGiftsClient.is_session_valid", return_value=True), \
+         patch("app.services.steamgifts_client.SteamGiftsClient.get_account_info", return_value=mock_account), \
+         caplog.at_level(logging.INFO):
+        checker._check_points()
+
+        assert checker._last_won_pending == 1
+        assert checker.get_status()["won_pending"] == 1
+        assert "🏆 [PREMIO] Tienes pendiente canjear un juego en SteamGifts" in caplog.text
+
+
+def test_points_checker_detects_multiple_won_pending_and_logs(caplog):
+    """Valida que PointsChecker gestione el mensaje en plural cuando hay múltiples premios pendientes."""
+    import logging
+    from app.services.points_checker import PointsChecker
+
+    checker = PointsChecker()
+    mock_account = AccountInfo(
+        points=120,
+        level=2,
+        username="LuckyWinner",
+        xsrf_token="token123",
+        won_pending=3,
+    )
+
+    with patch("app.core.config.settings.STEAMGIFTS_PHPSESSID", "dummy_sessid"), \
+         patch("app.services.steamgifts_client.SteamGiftsClient.is_session_valid", return_value=True), \
+         patch("app.services.steamgifts_client.SteamGiftsClient.get_account_info", return_value=mock_account), \
+         caplog.at_level(logging.INFO):
+        checker._check_points()
+
+        assert checker._last_won_pending == 3
+        assert checker.get_status()["won_pending"] == 3
+        assert "🏆 [PREMIO] Tienes pendientes canjear 3 juegos en SteamGifts" in caplog.text
+
