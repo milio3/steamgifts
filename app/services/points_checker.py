@@ -278,37 +278,26 @@ class PointsChecker:
 
             # Ejecutar chequeo
             self._status = "🔍 chequeando puntos..."
-            self._check_points()
+            segundos_espera = self._check_points()
 
             if self._stop_event.is_set():
                 break
-
-            # Calcular siguiente intervalo respetando pausa y jitter
-            proximo, segundos_espera, tras_pausa = self.calcular_proximo_chequeo()
-            self._next_check = proximo
-            hora_str = proximo.strftime("%H:%M:%S")
-            if tras_pausa:
-                self._status = f"💤 pausa nocturna. Próximo chequeo: {hora_str} (tras pausa + jitter)"
-                logger.info(f"[AUTOCHECKER] Siguiente chequeo programado tras fin de pausa nocturna: {hora_str}")
-            else:
-                minutos_aprox = int(segundos_espera // 60)
-                self._status = f"⏳ esperando ~{minutos_aprox} min"
-                logger.info(f"[AUTOCHECKER] Próximo chequeo en ~{minutos_aprox} min (a las {hora_str})")
 
             self._stop_event.wait(segundos_espera)
 
         self._status = "detenido"
         logger.info("[AUTOCHECKER] Hilo de chequeo finalizado")
 
-    def _check_points(self):
-        """Consulta los puntos actuales en SteamGifts."""
+    def _check_points(self) -> float:
+        """Consulta los puntos actuales en SteamGifts y programa el próximo chequeo. Devuelve segundos de espera."""
         from app.core.config import settings
 
+        segundos_fallback = 60.0
         try:
             if not settings.STEAMGIFTS_PHPSESSID:
                 self._status = "⚠️ error: cookie no configurada"
                 logger.warning("[AUTOCHECKER] No se puede chequear: PHPSESSID no configurada")
-                return
+                return segundos_fallback
 
             from app.services.steamgifts_client import SteamGiftsClient
 
@@ -322,7 +311,7 @@ class PointsChecker:
             if not client.is_session_valid():
                 self._status = "⚠️ error: sesión inválida"
                 logger.warning("[AUTOCHECKER] Sesión inválida al chequear puntos")
-                return
+                return segundos_fallback
 
             acc = client.get_account_info(force=True)
             self._last_points = acc.points
@@ -330,9 +319,22 @@ class PointsChecker:
             self._last_check = datetime.now()
             self._checks_count += 1
 
+            # Calcular el próximo chequeo para unificarlo en la misma línea informativa
+            proximo, segundos_espera, tras_pausa = self.calcular_proximo_chequeo()
+            self._next_check = proximo
+            hora_str = proximo.strftime("%H:%M:%S")
+
+            if tras_pausa:
+                self._status = f"💤 pausa nocturna. Próximo chequeo: {hora_str} (tras pausa + jitter)"
+                prox_detalle = f"Próximo chequeo tras pausa nocturna (a las {hora_str})"
+            else:
+                minutos_aprox = int(segundos_espera // 60)
+                self._status = f"⏳ esperando ~{minutos_aprox} min"
+                prox_detalle = f"Próximo chequeo en ~{minutos_aprox} min (a las {hora_str})"
+
             logger.info(
                 f"[AUTOCHECKER] ✅ Chequeo #{self._checks_count}: "
-                f"{acc.points} P (usuario: {acc.username})"
+                f"{acc.points} P (usuario: {acc.username}) | {prox_detalle}"
             )
 
             # Comprobar si hay premios pendientes de canjear y avisar en la consola web
@@ -366,9 +368,12 @@ class PointsChecker:
                         f"pero el bot ya está en ejecución, omitiendo autorun"
                     )
 
+            return segundos_espera
+
         except Exception as e:
             self._status = f"⚠️ error: {str(e)[:80]}"
             logger.error(f"[AUTOCHECKER] Error al chequear puntos: {e}")
+            return segundos_fallback
 
     def _trigger_bot_run(self):
         """Lanza una ejecución automática del bot en un hilo separado (la alerta se enviará al finalizar)."""

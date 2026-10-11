@@ -96,6 +96,7 @@ def test_points_checker_detects_won_pending_and_logs(caplog):
 
         assert checker._last_won_pending == 1
         assert checker.get_status()["won_pending"] == 1
+        assert "Chequeo #1: 120 P (usuario: LuckyWinner) | Próximo chequeo" in caplog.text
         assert "🏆 [PREMIO] Tienes pendiente canjear un juego en SteamGifts" in caplog.text
 
 
